@@ -4,6 +4,67 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.02.000] - 2026-08-07
+
+Regime conditioning: the stage every other rung sits downstream of, and the one the package's central
+claim is about.
+
+### Added
+
+- `regime`: two segmentation routes. `DiscreteRegimes` for an observed context (the distinct combinations
+  actually seen, rounded so float noise does not make every sample its own regime). `KMeansRegimes` for a
+  discovered one (plain-numpy k-means++ seeding, Lloyd iterations, restarts, deterministic given a seed,
+  context centred and scaled first). Running both and reporting the gap measures the price of not being
+  told the regime, which matters because a benchmark that ships its operating conditions as columns would
+  otherwise flatter the method.
+- A **novelty radius** on the clustered route. Each cluster carries the `novelty_quantile` of baseline
+  distances to its centre, and a monitored sample beyond `novelty_factor` times that is labelled `-1`.
+  Without it, a machine running somewhere the baseline never went receives a confident regime label and a
+  meaningless residual that looks exactly like every other residual.
+- `residual`: `RegimeResidualizer` with two models. `zscore` subtracts the per-regime baseline mean and
+  divides by its standard deviation. `linear` regresses each channel on the context within the regime
+  (ridge-regularised, because inside one regime the context barely moves, which is what made it a regime)
+  and additionally removes the within-regime context dependence a coarse partition leaves behind.
+- `make_arms(baseline, monitored, ...)`: builds both arms of the central comparison from an explicit
+  baseline and an explicit monitored record. The raw arm is left untouched rather than standardised,
+  since global standardisation is itself a one-regime residual model and would blur the contrast being
+  measured. Context channels are excluded from monitoring by default, their residual being zero by
+  construction.
+- `kmeans_inertia_sweep`: returns the within-cluster sum of squares per k rather than picking a k.
+  Automatic elbow detection routinely returns k = 2 for a machine with six operating conditions, because
+  the two loaded states dominate the variance.
+- 32 further tests (71 total), ruff clean.
+
+### Measured
+
+On synthetic data where the regime effect is emergent (both channels respond to both context variables
+because the generator puts the physics there, not because a step was pasted in), the share of a channel's
+variance living between regimes:
+
+| arm | between-regime share |
+|---|---|
+| raw channel | above 0.90 |
+| within-regime residual | below 0.02 |
+
+With a continuous grade and only two regimes, the `zscore` residual keeps a correlation above 0.5 with
+grade while `linear` drops below 0.15.
+
+This shows the residual removes the regime. It does **not** yet show that removing the regime reduces
+false alarms at a fixed detection delay; that needs detectors and the controlled C-MAPSS contrast, and it
+may come back negative.
+
+### Notes
+
+Samples that cannot be residualised become `NaN`, never a pooled or nearest-regime fill: a fill would
+manufacture a plausible number for the one situation the method has nothing to say about, and downstream
+it would be indistinguishable from a real residual. If no regime is usable at all the fit raises, because
+returning an all-NaN residual successfully is how a pipeline reports zero detections and looks like it
+ran.
+
+The leakage trap is demonstrated by a test rather than only documented: fitting the residual model on the
+record being monitored folds the fault into the definition of normal and shrinks the measured fault step
+to under three quarters of its honest size, with nothing raising and every output looking healthy.
+
 ## [0.01.000] - 2026-08-06
 
 The data contract and the measurement layer. Nothing detects anything yet, on purpose: the way a

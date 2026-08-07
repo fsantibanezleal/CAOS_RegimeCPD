@@ -37,18 +37,19 @@ baseline invalidates every comparison made on top of it.
 
 | method | primary source | status |
 |---|---|---|
+| Regime conditioning (segmentation + residual) | [01 Regime conditioning](methods/01_regime-conditioning.md) | **implemented** (v0.02.000) |
 | Regime-conditional detection, measured against raw | this package | planned |
 | Conformal calibration of the alarm rate | Xu and Xie (2021), *ICML*, PMLR **139**:11559-11569; Gibbs and Candes (2021), *NeurIPS* **34**:1660-1672 | planned |
 
 ## Currently implemented
 
-**Nothing on the ladder yet, and that is not an omission.** v0.01.000 ships the data contract and the
-measurement layer only. The way a detector is SCORED is what every later claim rests on, so it was built
-and tested first, and building it first already caught one defect that would have corrupted every
-benchmark run through it: see
-[the alarm-budget trap](architecture/02_measuring-a-detector.md#the-event-counted-rate-is-not-monotone-in-the-threshold).
+| release | what landed |
+|---|---|
+| v0.01.000 | The data contract and the measurement layer. Built before any detector on purpose: how a detector is SCORED is what every later claim rests on, and building it first already caught a defect that would have corrupted every benchmark run through it (see [the alarm-budget trap](architecture/02_measuring-a-detector.md#the-event-counted-rate-is-not-monotone-in-the-threshold)) |
+| v0.02.000 | [Regime conditioning](methods/01_regime-conditioning.md): observed and discovered segmentation, the novelty radius, both residual models, and `make_arms` |
 
-Each rung lands in its own release, with its own tests and its own page here.
+**No detector exists yet**, so no rung of the classical or SOTA tiers is marked implemented above. Each
+lands in its own release with its own tests and its own page here.
 
 ## The comparison design, stated once
 

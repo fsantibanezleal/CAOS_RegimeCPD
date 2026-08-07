@@ -31,9 +31,11 @@ from .metrics import (
     score_unit,
     threshold_for_budget,
 )
+from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inertia_sweep
+from .residual import RegimeResidualizer, make_arms
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.01.000"
+__version__ = "0.02.000"
 
 __all__ = [
     "__version__",
@@ -43,6 +45,13 @@ __all__ = [
     "Residual",
     "Detection",
     "Attribution",
+    # regime segmentation and the residual
+    "ContextScaler",
+    "DiscreteRegimes",
+    "KMeansRegimes",
+    "kmeans_inertia_sweep",
+    "RegimeResidualizer",
+    "make_arms",
     # measurement
     "UnitOutcome",
     "UnitScore",
