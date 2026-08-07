@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check regimecpd tests
+      - name: Tests
+        run: pytest
+
+  core-deps:
+    # The package claims a numpy-only core, and a claim in a README is not a guarantee. This job
+    # installs WITHOUT extras and asserts both halves: that the declared runtime dependency set is
+    # numpy alone, and that the package actually imports and runs under that install. If a detector
+    # ever reaches for scikit-learn at module scope, this fails rather than shipping a core that
+    # silently needs an ML stack to compute a CUSUM.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install core only
+        run: pip install .
+      - name: The core really is numpy-only, and works
+        run: |
+          cd /tmp   # import the INSTALLED package, never the source tree next to it
+          python - <<'PY'
+          import importlib.metadata as md
+
+          hard = [d for d in (md.requires("regimecpd") or []) if "extra ==" not in d]
+          assert hard == ["numpy>=1.24"], f"unexpected core dependencies: {hard}"
+
+          import numpy as np
+          import regimecpd as rc
+
+          t = np.arange(200.0)
+          stat = np.zeros(200)
+          stat[150:] = 5.0
+          fleet = [
+              rc.UnitOutcome(rc.Detection(t, stat, "smoke"), onset_t=140.0, unit_id="f0"),
+              rc.UnitOutcome(rc.Detection(t, np.zeros(200), "smoke"), onset_t=None, unit_id="h0"),
+          ]
+          th = rc.threshold_for_budget(fleet, target_rate=1e-3)
+          score = rc.score_fleet(fleet, th)
+          assert score.n_detected == 1, score
+          print(f"OK: core-only install works, regimecpd {rc.__version__}")
+          PY
+
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Base-integrity guards
+        run: |
+          fail=0
+          if git ls-files | grep -qE '(^|/)\.env(\..+)?$'; then
+            echo "::error::a real .env is tracked"; fail=1; fi
+          if git ls-files | grep -qiE '(^|/)\.?venv|\.(dll|so|dylib|pt|pth)$'; then
+            echo "::error::a venv or native binary is tracked"; fail=1; fi
+          if git grep -nF 'D:\_Repos' -- . ':!.github' >/dev/null 2>&1; then
+            echo "::error::leaked local machine path in a tracked file"; fail=1; fi
+          # this repo exists because internal packages are forbidden; it must never grow one
+          if git ls-files | grep -qE '(^|/)[a-z_]+lab/'; then
+            echo "::error::a *lab package appeared; see conventions/no-internal-packages.md"; fail=1; fi
+          if [ "$fail" -eq 0 ]; then echo "guards: OK"; fi
+          exit $fail
+
+      - name: Content standards, no em-dash and no emoji
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          # ADR-0067: an em-dash or an emoji in repo content reads as machine-written. Use a comma, a
+          # colon, a semicolon, a period or parentheses instead.
+          emoji = re.compile("[\U0001F000-\U0001FAFF\u2190-\u21FF\u2300-\u27BF\uFE0F]")
+          bad = []
+          for path in pathlib.Path(".").rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              if path.suffix not in {".md", ".py", ".toml", ".yml", ".yaml", ".txt"}:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              for i, line in enumerate(text.splitlines(), 1):
+                  if "\u2014" in line or "\u2013" in line:
+                      bad.append(f"{path}:{i}: em/en dash")
+                  if emoji.search(line):
+                      bad.append(f"{path}:{i}: emoji")
+          for b in bad:
+              print(f"::error::{b}")
+          print("content standards: OK" if not bad else f"{len(bad)} violations")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: Version coherence, VERSION == pyproject == the top CHANGELOG entry
+        run: |
+          python - <<'PY'
+          import pathlib, re
+
+          # The display form is zero-padded (`0.01.000`) and the PEP 440 manifest form is not (`0.1.0`),
+          # so a TEXTUAL comparison reports drift for two spellings of the same version. Only the numbers
+          # are compared, mirroring tools/version-audit/check_version_coherence.py in CAOS_MANAGE.
+          def norm(v):
+              m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)", v.strip())
+              assert m, f"unparseable version {v!r}"
+              return tuple(int(g) for g in m.groups())
+
+          version = pathlib.Path("VERSION").read_text().strip()
+          pyproj = re.search(r'^version\s*=\s*"([^"]+)"',
+                             pathlib.Path("pyproject.toml").read_text(), re.M).group(1)
+          chlog = re.search(r"^## \[([^\]]+)\]",
+                            pathlib.Path("CHANGELOG.md").read_text(), re.M).group(1)
+          dunder = re.search(r'^__version__\s*=\s*"([^"]+)"',
+                             pathlib.Path("regimecpd/__init__.py").read_text(), re.M).group(1)
+
+          seen = {"VERSION": version, "pyproject": pyproj, "CHANGELOG": chlog, "__version__": dunder}
+          normed = {k: norm(v) for k, v in seen.items()}
+          assert len(set(normed.values())) == 1, f"version drift: {seen}"
+          print(f"OK: {version} (manifest {pyproj})")
+          PY

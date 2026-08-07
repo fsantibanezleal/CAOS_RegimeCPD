@@ -1,0 +1,89 @@
+# Publish `regimecpd` to PyPI on a tagged release, via PyPI Trusted Publishing (OIDC), NO stored token
+# (ADR-0061). One-time human setup: add a PyPI "pending publisher" for project `regimecpd`, owner
+# `fsantibanezleal`, repo `CAOS_RegimeCPD`, workflow `publish.yml`, environment `pypi`. After that a
+# pushed tag `vX.XX.XXX` (or a published GitHub Release) builds and uploads tokenlessly.
+name: publish
+
+on:
+  release:
+    types: [published]
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Smoke-install the wheel in a clean venv and score a real fleet (the package contract)
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/python -m pip install dist/*.whl
+          cd /tmp   # import the INSTALLED wheel, not the checkout
+          /tmp/smoke/bin/python - <<'PY'
+          import numpy as np
+          import regimecpd as rc
+
+          # An installed wheel must be able to run the whole measurement path from a clean venv: build
+          # detections, calibrate a threshold against a budget, score a fleet, and produce an interval.
+          rng = np.random.default_rng(0)
+          t = np.arange(3000.0)
+
+          faulty = []
+          for k in range(5):
+              stat = np.abs(rng.normal(size=3000))
+              stat[2200:] += 4.0                       # an onset at t = 2200
+              faulty.append(rc.UnitOutcome(rc.Detection(t, stat, "smoke"), onset_t=2200.0, unit_id=f"f{k}"))
+          healthy = [rc.UnitOutcome(rc.Detection(t, np.abs(rng.normal(size=3000)), "smoke"), None, f"h{k}")
+                     for k in range(15)]
+          fleet = faulty + healthy
+
+          th = rc.threshold_for_budget(fleet, target_rate=1e-3)
+          assert th is not None, "no threshold met the budget"
+          score = rc.score_fleet(fleet, th)
+          assert score.n_detected == score.n_faulty == 5, score
+          assert score.false_alarms_per_unit_time <= 1e-3, score
+
+          point, lo, hi = rc.bootstrap_ci(
+              fleet, lambda o: rc.score_fleet(o, th).false_alarms_per_unit_time, n_boot=200)
+          assert lo <= point <= hi, (point, lo, hi)
+
+          # The degenerate always-on threshold must never be what calibration returns.
+          floor = min(o.detection.statistic.min() for o in fleet) - 1.0
+          assert rc.score_fleet(fleet, floor).n_detected == 0, "setup: the trap detects nothing"
+          assert th > floor, "calibration fell into the always-on region"
+
+          print(f"smoke OK: regimecpd {rc.__version__}, {score.n_detected}/{score.n_faulty} detected, "
+                f"median delay {score.median_delay}, "
+                f"{score.per(730.0):.4f} false alarms per unit-month")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC: PyPI mints a short-lived token, nothing is stored
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "regimecpd"
+version = "0.1.0"
+description = "Regime-conditional change-point detection for load-varying machines: segment the operating regime, build the within-regime residual, detect on that, and measure whether the regime stage actually earns its place."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Felipe Santibanez-Leal" }]
+keywords = [
+  "change point detection", "changepoint", "anomaly detection", "condition monitoring",
+  "predictive maintenance", "operating regime", "regime switching", "residual",
+  "statistical process control", "cusum", "ewma", "bocpd", "pelt", "matrix profile",
+  "conformal prediction", "false alarm rate", "prognostics", "fleet monitoring",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Operating System :: OS Independent",
+]
+# The core is numpy and nothing else. Every detector, the PCA, the change-point recursions and the
+# conformal calibration are written against numpy directly, so the package installs in seconds and stays
+# usable from a constrained environment. Anything that needs scikit-learn is an extra, not a core
+# dependency: a monitoring library that drags in a full ML stack to compute a CUSUM has misplaced its
+# boundary.
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+learned = ["scikit-learn>=1.3"]
+dev = ["pytest>=8.0", "ruff>=0.6", "build>=1.0", "scikit-learn>=1.3"]
+
+[project.urls]
+Homepage = "https://github.com/fsantibanezleal/CAOS_RegimeCPD"
+# The wiki is the real documentation; the README is a front page. A PyPI listing with no Documentation
+# link sends every reader to the front page and no further.
+Documentation = "https://github.com/fsantibanezleal/CAOS_RegimeCPD/blob/main/docs/README.md"
+Issues = "https://github.com/fsantibanezleal/CAOS_RegimeCPD/issues"
+Changelog = "https://github.com/fsantibanezleal/CAOS_RegimeCPD/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["regimecpd*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
