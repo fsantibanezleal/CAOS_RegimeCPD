@@ -1,14 +1,21 @@
-# Publish `regimecpd` to PyPI on a tagged release, via PyPI Trusted Publishing (OIDC), NO stored token
-# (ADR-0061). One-time human setup: add a PyPI "pending publisher" for project `regimecpd`, owner
-# `fsantibanezleal`, repo `CAOS_RegimeCPD`, workflow `publish.yml`, environment `pypi`. After that a
-# pushed tag `vX.XX.XXX` (or a published GitHub Release) builds and uploads tokenlessly.
+# Publish `regimecpd` to PyPI via PyPI Trusted Publishing (OIDC), NO stored token (ADR-0061).
+#
+# One-time human setup, still OUTSTANDING: add a PyPI "pending publisher" for project `regimecpd`,
+# owner `fsantibanezleal`, repo `CAOS_RegimeCPD`, workflow `publish.yml`, environment `pypi`. Until that
+# exists, an upload attempt fails at the OIDC exchange.
+#
+# Triggered by a PUBLISHED RELEASE ONLY, not by a tag push. ADR-0061 permits either, and release-only is
+# chosen deliberately: `conventions/versioning.md` requires a `vX.XX.XXX` tag on every release, but this
+# package accumulates several tagged versions before its first upload while the pending publisher is
+# still unregistered. With a tag trigger, every one of those tags would start a run that fails at the
+# upload step, leaving a wall of red on a repo that is perfectly healthy and training everyone to ignore
+# it. Publishing becomes an explicit act instead.
 name: publish
 
 on:
   release:
     types: [published]
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
