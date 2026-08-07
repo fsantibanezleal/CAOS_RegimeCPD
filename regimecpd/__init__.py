@@ -34,9 +34,10 @@ from .metrics import (
 )
 from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inertia_sweep
 from .residual import RegimeResidualizer, make_arms
+from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.03.000"
+__version__ = "0.04.000"
 
 __all__ = [
     "__version__",
@@ -58,6 +59,10 @@ __all__ = [
     "CUSUM",
     "EWMA",
     "PageHinkley",
+    # multivariate SPC
+    "PCAMonitor",
+    "normal_quantile",
+    "chi2_quantile",
     # measurement
     "UnitOutcome",
     "UnitScore",
