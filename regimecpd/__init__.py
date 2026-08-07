@@ -33,12 +33,13 @@ from .metrics import (
     score_unit,
     threshold_for_budget,
 )
+from .pelt import PELT, optimal_partition, segmentation_error
 from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inertia_sweep
 from .residual import RegimeResidualizer, make_arms
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.05.000"
+__version__ = "0.06.000"
 
 __all__ = [
     "__version__",
@@ -67,6 +68,10 @@ __all__ = [
     # Bayesian online changepoint detection
     "BOCPD",
     "StudentTUPM",
+    # retrospective segmentation
+    "PELT",
+    "optimal_partition",
+    "segmentation_error",
     # measurement
     "UnitOutcome",
     "UnitScore",

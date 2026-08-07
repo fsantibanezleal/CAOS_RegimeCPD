@@ -4,6 +4,61 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.06.000] - 2026-08-07
+
+PELT: exact retrospective segmentation, and a deliberate absence.
+
+### Added
+
+- `pelt.PELT`: optimal partitioning with the PELT pruning step, two cost functions (`meanvar` and
+  `mean`), BIC penalty by default, `min_size` enforced, incomplete samples dropped with the mapping back
+  to original indices preserved so a reported changepoint always refers to a real observation.
+- `pelt.optimal_partition`: the unpruned quadratic dynamic programme. Not for production, since it
+  returns the same answer more slowly. It exists so the exactness claim can be TESTED rather than
+  trusted.
+- `pelt.segmentation_error`: onset-time error **and** the changepoint count, as a pair, computed on the
+  time axis rather than on sample indices.
+- 25 further tests (200 total), and
+  [docs/methods/05_pelt-retrospective-segmentation.md](docs/methods/05_pelt-retrospective-segmentation.md).
+
+### Verified
+
+The paper's contribution is that pruning costs nothing in accuracy, so the pruned and unpruned dynamic
+programmes must return **identical** segmentations, not similar ones. Asserted over five random seeds,
+both cost functions, and pure noise (the case where pruning is most aggressive and so most likely to
+over-prune). A pruning bug would otherwise surface as slightly different changepoints, which reads as a
+tuning difference rather than as an error.
+
+### Measured, and left visible rather than tuned around
+
+With BIC and a free variance, a record whose changes are purely in the mean comes back **over-segmented**:
+
+| cost | penalty | changepoints on a 3-changepoint record |
+|---|---|---|
+| `meanvar` | BIC | 6 |
+| `mean` | BIC | 3, all correct |
+| `meanvar` | 60 | 3, all correct |
+
+Nothing is broken. The cost function was asked the wrong question and the answer fits the data well while
+meaning something other than what was wanted. Both configurations locate every true changepoint to within
+3 samples, so an error-only report would rate them as equally good. A test pins all three rows.
+
+### The deliberate absence
+
+**PELT exposes no `detect` and returns no `Detection`.** It is retrospective: it sees the whole record,
+including everything after the onset, before deciding where the onset was. Wiring it into an online
+detection metric would score a method with access to the future, and it would score spectacularly:
+detection delay near zero, false alarms near zero, because it is not detecting anything, it is describing
+a record it has already read.
+
+There is a test asserting the absence of `detect`, because a helpful future addition is exactly how the
+leak would be reintroduced.
+
+For the same reason `segmentation_error` returns the count with the error. Taking the nearest changepoint
+is optimistic: a segmentation cutting the record every 5 samples scores an error of 0.0 with 60
+changepoints. "Located the onset to within 3 samples" and "declared 47 other changepoints" are the same
+measurement.
+
 ## [0.05.000] - 2026-08-07
 
 Bayesian online changepoint detection: the run-length posterior, and two findings worth more than the
