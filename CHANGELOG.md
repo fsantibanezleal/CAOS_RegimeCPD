@@ -4,6 +4,64 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.04.000] - 2026-08-07
+
+Multivariate SPC: the rung that answers **which variables**, which is what turns an alarm into an action.
+
+### Added
+
+- `spc.PCAMonitor`: Hotelling T-squared on the retained principal subspace, SPE (the Q statistic) on the
+  residual subspace, both classical control limits, and contribution plots for both statistics. PCA by
+  SVD of the autoscaled baseline, so the component structure reports the machine rather than whichever
+  channel is measured in the largest units.
+- `normal_quantile` and `chi2_quantile`: Acklam's rational inverse normal CDF refined by one Halley step
+  against `math.erfc`, and the Wilson-Hilferty chi-square transformation. Implemented rather than
+  imported, because pulling in a full scientific stack so a monitoring library can look up one quantile
+  would misplace the dependency boundary. Both are tested against published quantiles.
+- 30 further tests (148 total), and
+  [docs/methods/03_multivariate-spc-and-contributions.md](docs/methods/03_multivariate-spc-and-contributions.md).
+
+### Measured
+
+T-squared and SPE catch different faults, and neither subsumes the other. Constructed and asserted:
+
+| fault | T-squared | SPE |
+|---|---|---|
+| driven far along a direction the machine already varies in | rises above 20x | barely moves |
+| two channels that moved together stop doing so, each staying in its usual range | barely moves | rises above 20x |
+
+The second row is the one usually lost: every individual channel stays inside its normal range, so only
+the broken correlation gives it away. `detect` therefore always carries both arrays in `meta`, so a
+result cannot be reported without the half that might have contradicted it.
+
+The Jackson-Mudholkar SPE limit was checked against the property it claims (flagging about alpha of
+held-out in-control samples) at two values of alpha, rather than against this implementation's output.
+
+### Notes
+
+**Smearing is demonstrated by a test, not only disclaimed.** With only channel `a` faulted, the healthy
+channel `b`, which is merely correlated with `a`, is required to pick up more than 20% of `a`'s
+contribution. If `b` ever stops smearing, that test fails and the documentation gets revisited rather
+than quietly becoming untrue. A contribution narrows a candidate set; it does not identify a cause.
+
+The SPE contribution decomposes SPE exactly, asserted to a relative tolerance of 1e-10. The T-squared
+contribution takes an absolute value per variable, because a signed contribution can cancel across
+components and report a variable as uninvolved while it carries the excursion in both directions.
+
+A component whose eigenvalue is numerically zero is pushed into the residual subspace rather than
+retained, since dividing by it in T-squared would turn rounding noise into an unbounded statistic.
+
+The control limits exist because they are the published contribution of these papers and because they let
+the implementation be checked against a stated property. **They are not what comparisons use.** Both
+assume multivariate normality of the baseline, which real telemetry frequently violates, and two methods
+at their own preferred limits say nothing about each other.
+
+`statistic="combined"` is provided and is honestly the weakest of the three: it inherits the
+approximations in both limits and hides which subspace moved, which is the one thing this rung exists to
+tell you.
+
+Hotelling (1947) was not verified against a primary source and is marked UNVERIFIED in the docs.
+
 ## [0.03.000] - 2026-08-07
 
 The classical tier: the baseline this package claims to beat, implemented properly rather than left
