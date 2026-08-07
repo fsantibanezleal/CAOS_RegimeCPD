@@ -27,7 +27,7 @@ baseline invalidates every comparison made on top of it.
 
 | method | primary source | status |
 |---|---|---|
-| BOCPD (run-length posterior) | Adams and MacKay (2007), [arXiv:0710.3742](https://arxiv.org/abs/0710.3742) | planned |
+| BOCPD (run-length posterior) | Adams and MacKay (2007), [arXiv:0710.3742](https://arxiv.org/abs/0710.3742) | **implemented** (v0.05.000) |
 | PELT | Killick, Fearnhead and Eckley (2012), *JASA* **107**(500):1590-1598, doi:[10.1080/01621459.2012.737745](https://doi.org/10.1080/01621459.2012.737745) | planned |
 | mSTAMP (window and dimension subset) | Yeh, Kavantzas and Keogh (2017), *ICDM 2017*, pp. 565-574 | planned |
 | ADWIN | Bifet and Gavalda (2007), *SDM 2007*, pp. 443-448 | planned |
@@ -49,8 +49,9 @@ baseline invalidates every comparison made on top of it.
 | v0.02.000 | [Regime conditioning](methods/01_regime-conditioning.md): observed and discovered segmentation, the novelty radius, both residual models, and `make_arms` |
 | v0.03.000 | [Classical control charts](methods/02_classical-control-charts.md): Shewhart, CUSUM, EWMA with the exact time-varying limit, Page-Hinkley, plus per-channel attribution |
 | v0.04.000 | [Multivariate SPC and contributions](methods/03_multivariate-spc-and-contributions.md): Hotelling T-squared, SPE/Q, both classical control limits, and contribution plots for both statistics |
+| v0.05.000 | [BOCPD](methods/04_bayesian-online-changepoint-detection.md): the run-length posterior, a swappable Student-t predictive, and the recorded finding that the paper's changepoint probability is identically the hazard rate |
 
-The classical tier is complete. No SOTA or beyond-SOTA detector exists yet, and **no controlled
+The classical tier is complete and the first SOTA rung has landed. **No controlled
 raw-against-residual comparison has been run**: the releases so far establish only that each method
 behaves the way its source says it behaves. Each remaining rung lands in its own release with its own
 tests and its own page here.

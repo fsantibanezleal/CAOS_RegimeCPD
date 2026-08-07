@@ -19,6 +19,7 @@ for that claim rather than an assertion of it.
 
 from __future__ import annotations
 
+from .bocpd import BOCPD, StudentTUPM
 from .classical import CUSUM, EWMA, PageHinkley, Shewhart
 from .metrics import (
     FleetScore,
@@ -37,7 +38,7 @@ from .residual import RegimeResidualizer, make_arms
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.04.000"
+__version__ = "0.05.000"
 
 __all__ = [
     "__version__",
@@ -63,6 +64,9 @@ __all__ = [
     "PCAMonitor",
     "normal_quantile",
     "chi2_quantile",
+    # Bayesian online changepoint detection
+    "BOCPD",
+    "StudentTUPM",
     # measurement
     "UnitOutcome",
     "UnitScore",

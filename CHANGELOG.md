@@ -4,6 +4,72 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.05.000] - 2026-08-07
+
+Bayesian online changepoint detection: the run-length posterior, and two findings worth more than the
+code.
+
+### Added
+
+- `bocpd.BOCPD`: the Adams and MacKay recursion with a swappable predictive model, returning the full
+  run-length posterior in `meta` indexed by true run length, so a consumer can plot the distribution
+  rather than a line.
+- `bocpd.StudentTUPM`: Gaussian observations with unknown mean and variance under a Normal-Inverse-Gamma
+  prior. Channels are conditionally independent given the run length, so every channel shares ONE
+  run-length posterior, which is what a product needs: one onset time for the machine, not one per
+  channel.
+- 27 further tests (175 total), and
+  [docs/methods/04_bayesian-online-changepoint-detection.md](docs/methods/04_bayesian-online-changepoint-detection.md).
+
+### The finding: the paper's changepoint probability is a constant
+
+The obvious reading of this algorithm is that it hands you `p(r_t = 0 | x_1:t)` and that you threshold
+it. **Under a constant hazard that quantity is identically the hazard rate**, at every step, on every
+dataset, because both branches of the recursion weight the same predictive and the hazard factors
+straight out. The new observation is evaluated under the OLD run's parameters in both branches, so it
+cannot yet distinguish them; the evidence arrives on the following steps.
+
+This is not a defect in the algorithm and it was not a bug here. It is a trap in the reading, and it
+produces a detector whose statistic is a flat line at 0.005 next to a perfectly sensible-looking
+posterior plot. `statistic="changepoint"` is kept with a test asserting it equals the hazard at three
+different rates, so the property is recorded rather than rediscovered.
+
+The default statistic is now `short_run`, the posterior mass on runs of length at most `w`, which is the
+informative version of the same idea: after a real change, mass collapses onto short runs and stays there
+for several steps. Measured on a six-sigma step, above 0.9 in the twenty samples after the change against
+a median below 0.2 before it. `surprise` (negative log evidence) is also available and is unbounded,
+which often calibrates better because it does not saturate near 1.
+
+### Fixed: run length is not array position
+
+The exact posterior grows by one hypothesis per sample, so pruning is unavoidable. Once it happens the
+survivors are no longer a contiguous 0, 1, 2 block, and array position stops equalling run length. The
+first implementation read the shape parameters by position, so every hypothesis got the wrong prior
+strength and the predictive stopped discriminating between hypotheses.
+
+The symptom was a changepoint probability pinned at exactly the hazard rate, which is indistinguishable
+from the genuine constant described above without checking the other statistics at the same time. Run
+lengths are now carried explicitly, and the reported posterior is scattered to the true run length so a
+pruned posterior still plots against a meaningful axis.
+
+### Fixed: the warm-up
+
+`p(r_t <= w)` is structurally 1 while `t <= w`, since the run cannot be longer than the record. Without a
+warm-up the largest value of the statistic on ANY record is at index 0, so every detection lands on the
+record beginning rather than on a fault. The first `warmup` samples (default 20) are now undefined.
+
+### Notes
+
+The derivation assumes the parameters before and after a changepoint are independent. That suits a step
+change and suits a slow drift poorly: when the post-change state is nearly the pre-change state, evidence
+for a changepoint at any instant stays weak no matter how far the drift eventually travels. A test pins
+that behaviour. It matters for the product built on this package, because degradation onset is often
+gradual and BOCPD is therefore not automatically the best rung for it.
+
+The `lgamma` table is precomputed by run length rather than called per hypothesis per sample. That is a
+performance decision with no accuracy cost, and it is checked against `math.lgamma` at a relative
+tolerance of 1e-14 rather than assumed.
+
 ## [0.04.000] - 2026-08-07
 
 Multivariate SPC: the rung that answers **which variables**, which is what turns an alarm into an action.
