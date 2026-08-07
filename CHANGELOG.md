@@ -4,6 +4,59 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.03.000] - 2026-08-07
+
+The classical tier: the baseline this package claims to beat, implemented properly rather than left
+convenient.
+
+### Added
+
+- `classical`: `Shewhart`, `CUSUM`, `EWMA` and `PageHinkley`. Each fits location and scale on a healthy
+  baseline, returns a continuous statistic oriented so larger is more anomalous, and applies no threshold
+  of its own.
+- Multivariate reduction is the **maximum** across channels, not the mean. Averaging dilutes a
+  single-channel fault by the channel count, so a twelve-channel machine would need a twelve-times-larger
+  fault to reach the same statistic, and onset evidence is usually one channel moving.
+- `Detection.channel_attribution(index)`: names the channels that drove the statistic, for any detector
+  that records per-channel detail. A detector without that detail raises rather than inventing an even
+  split.
+- 47 further tests (118 total), and
+  [docs/methods/02_classical-control-charts.md](docs/methods/02_classical-control-charts.md).
+
+### Verified against published properties, not against this implementation's own output
+
+- Shewhart at 3 sigma flags 0.20% to 0.35% of in-control samples over 200,000 draws, bracketing the
+  published 0.27% under normality. A self-consistency check would not have caught a wrong
+  standardisation; this does.
+- CUSUM accumulates a sustained shift at a rate matching the closed form (delta minus k) to within 5%.
+  Checking the rate rather than the direction is what catches a wrong reference value.
+- EWMA at lambda = 1 reduces to Shewhart to floating-point tolerance, and at t = 1 the standardised
+  statistic equals the standardised observation for **every** lambda, which pins the variance factor.
+- Shewhart's known weakness is asserted rather than described: on a sustained half-sigma shift it stays
+  under 6 while CUSUM exceeds 50.
+
+### Notes
+
+**The EWMA control limit is the exact time-varying one**, not the asymptote. The asymptotic form
+overstates the spread of the early samples, so a chart using it from the start is weaker at the beginning
+of every record by a factor of 1/sqrt(lambda(2-lambda)), which is 1.667 at lambda = 0.2. On a fleet where
+records are short and restarts are common, that dead zone is a real loss of detection and is invisible
+unless tested. The observation count is tracked **per channel**, so a channel that was NaN for a stretch
+follows its own control limit rather than the wall-clock index.
+
+**A correction to a claim made while writing this.** "Small lambda reacts more slowly" is true of the raw
+smoothed value and false of the standardised statistic. For a sustained shift the statistic approaches
+|z|/sqrt(lambda/(2-lambda)), which grows as lambda shrinks, so small lambda is uniformly stronger on the
+small persistent shift degradation onset actually is. The genuine cost of small lambda is memory: after a
+transient it holds the excursion far longer. Both halves are now tested against closed forms.
+
+**Page-Hinkley is recorded as a CUSUM variant, not an independent rung**, with a test requiring
+correlation above 0.98 between the two. Counting them as two independent classical baselines would
+inflate any "we beat N baselines" claim.
+
+Shewhart (1931) and Hinkley (1971) were not verified against primary sources in the research pass behind
+this package and are marked UNVERIFIED in the docs.
+
 ## [0.02.000] - 2026-08-07
 
 Regime conditioning: the stage every other rung sits downstream of, and the one the package's central

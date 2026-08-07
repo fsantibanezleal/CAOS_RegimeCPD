@@ -19,6 +19,7 @@ for that claim rather than an assertion of it.
 
 from __future__ import annotations
 
+from .classical import CUSUM, EWMA, PageHinkley, Shewhart
 from .metrics import (
     FleetScore,
     UnitOutcome,
@@ -35,7 +36,7 @@ from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inerti
 from .residual import RegimeResidualizer, make_arms
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.02.000"
+__version__ = "0.03.000"
 
 __all__ = [
     "__version__",
@@ -52,6 +53,11 @@ __all__ = [
     "kmeans_inertia_sweep",
     "RegimeResidualizer",
     "make_arms",
+    # classical detectors
+    "Shewhart",
+    "CUSUM",
+    "EWMA",
+    "PageHinkley",
     # measurement
     "UnitOutcome",
     "UnitScore",

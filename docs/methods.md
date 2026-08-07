@@ -16,10 +16,10 @@ baseline invalidates every comparison made on top of it.
 
 | method | primary source | status |
 |---|---|---|
-| Shewhart / fixed threshold | Shewhart (1931) | planned |
-| CUSUM | Page (1954), *Biometrika* **41**(1-2):100-115, doi:[10.1093/biomet/41.1-2.100](https://doi.org/10.1093/biomet/41.1-2.100) | planned |
-| EWMA | Roberts (1959), *Technometrics* **1**(3):239-250, doi:[10.1080/00401706.1959.10489860](https://doi.org/10.1080/00401706.1959.10489860) | planned |
-| Page-Hinkley | Hinkley (1971) | planned |
+| Shewhart / fixed threshold | Shewhart (1931) | **implemented** (v0.03.000) |
+| CUSUM | Page (1954), *Biometrika* **41**(1-2):100-115, doi:[10.1093/biomet/41.1-2.100](https://doi.org/10.1093/biomet/41.1-2.100) | **implemented** (v0.03.000) |
+| EWMA | Roberts (1959), *Technometrics* **1**(3):239-250, doi:[10.1080/00401706.1959.10489860](https://doi.org/10.1080/00401706.1959.10489860) | **implemented** (v0.03.000) |
+| Page-Hinkley | Hinkley (1971) | **implemented** (v0.03.000) |
 | Hotelling $T^2$ and SPE / $Q$ on PCA | Jackson and Mudholkar (1979), *Technometrics* **21**(3):341-349, doi:[10.1080/00401706.1979.10489779](https://doi.org/10.1080/00401706.1979.10489779) | planned |
 | Contribution plots | Kourti and MacGregor (1996), *JQT* **28**(4):409-428, doi:[10.1080/00224065.1996.11979699](https://doi.org/10.1080/00224065.1996.11979699); Westerhuis, Gurden and Smilde (2000), doi:[10.1016/S0169-7439(00)00062-9](https://doi.org/10.1016/S0169-7439(00)00062-9) | planned |
 
@@ -47,9 +47,12 @@ baseline invalidates every comparison made on top of it.
 |---|---|
 | v0.01.000 | The data contract and the measurement layer. Built before any detector on purpose: how a detector is SCORED is what every later claim rests on, and building it first already caught a defect that would have corrupted every benchmark run through it (see [the alarm-budget trap](architecture/02_measuring-a-detector.md#the-event-counted-rate-is-not-monotone-in-the-threshold)) |
 | v0.02.000 | [Regime conditioning](methods/01_regime-conditioning.md): observed and discovered segmentation, the novelty radius, both residual models, and `make_arms` |
+| v0.03.000 | [Classical control charts](methods/02_classical-control-charts.md): Shewhart, CUSUM, EWMA with the exact time-varying limit, Page-Hinkley, plus per-channel attribution |
 
-**No detector exists yet**, so no rung of the classical or SOTA tiers is marked implemented above. Each
-lands in its own release with its own tests and its own page here.
+The classical tier is complete. No SOTA or beyond-SOTA detector exists yet, and no controlled
+raw-against-residual comparison has been run: v0.03.000 establishes only that the baselines behave the
+way their sources say they behave. Each remaining rung lands in its own release with its own tests and
+its own page here.
 
 ## The comparison design, stated once
 
