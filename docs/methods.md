@@ -42,7 +42,7 @@ baseline invalidates every comparison made on top of it.
 |---|---|---|
 | Regime conditioning (segmentation + residual) | [01 Regime conditioning](methods/01_regime-conditioning.md) | **implemented** (v0.02.000) |
 | Regime-conditional detection, measured against raw | this package | planned |
-| Conformal calibration of the alarm rate | Xu and Xie (2021), *ICML*, PMLR **139**:11559-11569; Gibbs and Candes (2021), *NeurIPS* **34**:1660-1672 | planned |
+| Conformal calibration of the alarm rate | Xu and Xie (2021), *ICML*, PMLR **139**:11559-11569; Gibbs and Candes (2021), *NeurIPS* **34**:1660-1672 | **implemented** (v0.09.000) |
 
 ## Currently implemented
 
@@ -56,11 +56,16 @@ baseline invalidates every comparison made on top of it.
 | v0.06.000 | [PELT](methods/05_pelt-retrospective-segmentation.md): exact retrospective segmentation, verified against the unpruned quadratic optimum, with no online detection interface on purpose |
 | v0.07.000 | [mSTAMP](methods/06_mstamp-matrix-profile.md): the multidimensional matrix profile via MASS, with the recorded finding that its matching subset names exactly the wrong channels at a discord |
 | v0.08.000 | [Drift and healthy-only novelty](methods/07_drift-and-novelty.md): ADWIN, KSWIN, isolation forest, one-class SVM and a GPU autoencoder, with the sign flip handled once at the source |
+| v0.09.000 | [Conformal calibration](methods/08_conformal-calibration.md): split and adaptive conformal p-values, the finite-sample bound asserted by replication, and the bound shown to BREAK on dependent data |
 
-The classical tier is complete and the first SOTA rung has landed. **No controlled
-raw-against-residual comparison has been run**: the releases so far establish only that each method
-behaves the way its source says it behaves. Each remaining rung lands in its own release with its own
-tests and its own page here.
+**Every rung on the ladder is now implemented**, from Shewhart to conformal calibration, each with its
+own tests and its own page here.
+
+**No controlled raw-against-residual comparison has been run.** The releases so far establish only that
+each method behaves the way its source says it behaves, and that the two comparison arms are constructed
+so that only one thing differs between them. The claim itself is measured by the consumer of this
+package, on the C-MAPSS contrast and on synthetic data with a known onset, and it may come back
+negative.
 
 ## The comparison design, stated once
 
