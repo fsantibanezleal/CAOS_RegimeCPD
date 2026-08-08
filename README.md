@@ -43,10 +43,26 @@ that claim rather than an assertion of it.
 
 ## Status
 
-**v0.01.000.** The data contract and the measurement layer are complete and tested. The detector ladder
-is being built on top of them, one rung per release, each with its own tests and its own documentation.
-See the [CHANGELOG](CHANGELOG.md) for what exists today and the
-[wiki](docs/README.md) for the theory.
+**v0.09.000. The method ladder is complete**, from Shewhart to conformal calibration. 290 tests, CI on
+Python 3.10 and 3.13.
+
+| tier | methods |
+|---|---|
+| Classical | Shewhart, CUSUM, EWMA, Page-Hinkley, Hotelling T-squared, SPE/Q, contribution plots |
+| SOTA | BOCPD, PELT, mSTAMP, ADWIN, KSWIN, isolation forest, one-class SVM, autoencoder (CUDA) |
+| Beyond | regime-conditional detection, split and adaptive conformal calibration |
+
+**Not yet published to PyPI.** The Trusted Publishing pending publisher has to be registered by a human
+before the first upload can succeed; until then, install from a git tag.
+
+**No controlled raw-against-residual comparison has been run yet.** What is established is that each
+method behaves the way its source says it behaves, and that the two comparison arms are constructed so
+only one thing differs between them. The claim itself is measured by a consumer of this package, and it
+may come back negative.
+
+See the [CHANGELOG](CHANGELOG.md) for what landed when, and the [wiki](docs/README.md) for the theory.
+Nine defects found and fixed during the build are recorded there; most of them produced plausible numbers
+rather than errors.
 
 ## Quick look
 

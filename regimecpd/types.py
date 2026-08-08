@@ -210,6 +210,27 @@ class Detection:
         s = self.statistic
         return np.where(np.isnan(s), False, s >= threshold)
 
+    def channel_attribution(self, index: int) -> "Attribution":
+        """Which channels drove the statistic at ``index``, for detectors that record per-channel detail.
+
+        Available whenever ``meta`` carries ``per_channel`` (shape ``(n, d)``) and ``names``. Detectors
+        that reduce across channels populate it; ones with no per-channel decomposition do not, and
+        raise here rather than inventing an even split across channels.
+
+        Read the caveat on :class:`Attribution` before presenting the result. This says which channel
+        carried the largest standardised excursion, which is a narrower and more defensible claim than
+        naming a cause.
+        """
+        per_channel = self.meta.get("per_channel")
+        names = self.meta.get("names")
+        if per_channel is None or names is None:
+            raise ValueError(
+                f"method {self.method!r} recorded no per-channel detail, so it cannot attribute"
+            )
+        scores = np.asarray(per_channel, dtype=float)[index]
+        return Attribution(np.where(np.isnan(scores), 0.0, scores), tuple(names),
+                           f"{self.method}:per-channel", index)
+
 
 @dataclass(frozen=True)
 class Attribution:
