@@ -21,6 +21,12 @@ from __future__ import annotations
 
 from .bocpd import BOCPD, StudentTUPM
 from .classical import CUSUM, EWMA, PageHinkley, Shewhart
+from .conformal import (
+    AdaptiveConformal,
+    SplitConformal,
+    calibration_report,
+    conformalise,
+)
 from .drift import ADWIN, KSWIN, ks_two_sample_pvalue
 from .metrics import (
     FleetScore,
@@ -42,7 +48,7 @@ from .residual import RegimeResidualizer, make_arms
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.08.000"
+__version__ = "0.09.000"
 
 __all__ = [
     "__version__",
@@ -86,6 +92,11 @@ __all__ = [
     "IsolationForestDetector",
     "OneClassSVMDetector",
     "AutoencoderDetector",
+    # conformal calibration
+    "SplitConformal",
+    "AdaptiveConformal",
+    "conformalise",
+    "calibration_report",
     # measurement
     "UnitOutcome",
     "UnitScore",

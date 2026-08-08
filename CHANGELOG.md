@@ -4,6 +4,72 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.000] - 2026-08-08
+
+Conformal calibration. **Every rung on the ladder is now implemented.**
+
+### Added
+
+- `conformal.SplitConformal`: p-values against a healthy calibration set, with the finite-sample
+  guarantee `Pr(p <= alpha) <= alpha` under exchangeability. Exposes `resolution`, the smallest reachable
+  p-value, because a budget below `1/(n_cal+1)` is not strict but impossible.
+- `conformal.AdaptiveConformal`: the Gibbs and Candes online level correction, which recovers the long-run
+  rate irrespective of the true data-generating process. A genuinely different guarantee from marginal
+  coverage under an assumption known to be false.
+- `conformal.conformalise` to put a whole fleet on one scale, and `conformal.calibration_report` to show
+  realised against nominal, per sample and per event.
+- 23 further tests (290 total), and
+  [docs/methods/08_conformal-calibration.md](docs/methods/08_conformal-calibration.md).
+
+### Why this rung matters more than its size
+
+Every detector returns a statistic on its own arbitrary scale, so a threshold chosen on one means nothing
+on another. Conformal p-values put two detectors differing by six orders of magnitude onto the same axis,
+which is what lets the package's central claim be a measurement rather than an unfalsifiable assertion:
+compared at each arm's own favourite threshold anything can be produced; compared at a fixed conformal
+budget, the result is a number.
+
+### Verified, and then verified to fail
+
+The bound is asserted **directly**, over 400 independent replications at four values of alpha, rather
+than argued from the formula. The `1 +` in numerator and denominator is shown to be load-bearing: the
+naive form fires more often, breaking the guarantee in the direction of more alarms than promised.
+
+Then the honest half. The bound is shown to **BREAK on dependent time-series data**, which is the case
+this package actually operates in: on an AR(1) with phi = 0.98, the realised rate at a nominal 0.05 has a
+standard deviation above 0.02 across records and some records exceed twice nominal. Quoting a guarantee
+without checking it against the data it runs on is borrowed authority.
+
+The adaptive variant answers that: on an AR(1) with phi = 0.99 over 35,000 samples it lands within 0.01
+of a 0.02 target.
+
+### Fixed: the adaptive level must be allowed to go negative
+
+The first implementation clipped alpha to [0, 1], which looks obviously harmless, since a negative level
+already means "never alarm".
+
+It is not harmless. The magnitude of the negative excursion is the **debt** the recursion works off
+before firing again, and that debt is what enforces the long-run rate. With a saturated detector (every
+p-value at the resolution floor) the clipped version discards the debt, recovers within two steps, and
+realises above 10% against a 1% target; unclipped it lands within 0.5%.
+
+The clipped version passed every other test in the file. It failed only in the saturated regime, which is
+exactly where a badly calibrated detector ends up. There is a regression test that computes the clipped
+variant explicitly, so it fails if clipping ever stops breaking things.
+
+### Notes
+
+`conform` reports `-log10(p)` rather than `p`: the orientation convention is that larger means more
+anomalous, and a raw p-value saturates at the resolution floor, which is exactly the sensitive end where
+an alarm-budget curve needs resolution.
+
+The adaptive guarantee is on the long-run average over a record, not on any window. A detector using it
+can emit a burst then stay quiet while the level recovers: the average is right and the experience is
+lumpy.
+
+EnbPI (Xu and Xie, 2021) is not implemented, and its absence is stated rather than glossed. Vovk et al.
+(2005) remains UNVERIFIED against a primary source.
+
 ## [0.08.000] - 2026-08-08
 
 Streaming drift detectors and healthy-only novelty models. The SOTA tier is now complete.
