@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from .bocpd import BOCPD, StudentTUPM
 from .classical import CUSUM, EWMA, PageHinkley, Shewhart
+from .drift import ADWIN, KSWIN, ks_two_sample_pvalue
 from .metrics import (
     FleetScore,
     UnitOutcome,
@@ -34,13 +35,14 @@ from .metrics import (
     threshold_for_budget,
 )
 from .mstamp import MatrixProfile, mass_distance_profile
+from .novelty import AutoencoderDetector, IsolationForestDetector, OneClassSVMDetector
 from .pelt import PELT, optimal_partition, segmentation_error
 from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inertia_sweep
 from .residual import RegimeResidualizer, make_arms
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.07.000"
+__version__ = "0.08.000"
 
 __all__ = [
     "__version__",
@@ -76,6 +78,14 @@ __all__ = [
     # matrix profile
     "MatrixProfile",
     "mass_distance_profile",
+    # streaming drift detectors
+    "ADWIN",
+    "KSWIN",
+    "ks_two_sample_pvalue",
+    # healthy-only novelty models (optional extras)
+    "IsolationForestDetector",
+    "OneClassSVMDetector",
+    "AutoencoderDetector",
     # measurement
     "UnitOutcome",
     "UnitScore",
