@@ -4,6 +4,77 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.07.000] - 2026-08-08
+
+mSTAMP: the second, independent answer to "which variables", plus a finding and a measured correction to
+received wisdom.
+
+### Added
+
+- `mstamp.MatrixProfile`: the multidimensional matrix profile. Distances by MASS (FFT sliding dot
+  product, so a distance profile is O(n log n) rather than O(nm)); sliding window statistics from prefix
+  sums; the k-dimensional profile for every k in one pass.
+- `matching_subset`: mSTAMP's own k-channel subset.
+- `anomalous_channels`: the discord attribution, per-channel distance to the full-dimensional nearest
+  neighbour.
+- 24 further tests (224 total), and
+  [docs/methods/06_mstamp-matrix-profile.md](docs/methods/06_mstamp-matrix-profile.md).
+
+### The finding: the matching subset names the wrong channels at a discord
+
+mSTAMP's k-dimensional subset is the k channels with the **smallest** distances, because the algorithm
+was designed to find motifs. At a discord that names the channels which still look normal.
+
+Measured on a four-channel record with the discord planted in `b` and `d`: `matching_subset(k=2)` returns
+`{a, c}`, the two channels still repeating cleanly. Reading it as attribution reports the two **healthy**
+channels as the culprits, with a perfectly sensible-looking discord peak beside it.
+
+Hence two separate methods answering two different questions, and a test asserting both halves so the
+distinction stays load-bearing.
+
+The same asymmetry decides which k detects a partial fault: since P_k uses the k smallest distances, a
+fault in two of four channels is invisible at k=2 and appears at k=d. **For fault detection, prefer a
+high k**, which is the opposite of the natural intuition.
+
+### Measured: the exclusion-zone folklore is wrong for this class of data
+
+The standard telling is that without a trivial-match exclusion zone the profile collapses to zero and the
+method reports an ordinary record no matter what is in it. A test was written to assert that and **it
+failed**. Measured on a stochastic smooth signal at window 40, median profile:
+
+| smoothing | lag-1 correlation | no zone | zone 0.5 | ratio |
+|---|---|---|---|---|
+| 30 | 0.959 | 0.291 | 0.322 | 0.91 |
+| 100 | 0.987 | 0.323 | 0.374 | 0.87 |
+| 300 | 0.998 | 0.296 | 0.334 | 0.89 |
+
+About a tenth, not a collapse, and saturating by a zone of about four samples. z-normalisation is the
+reason: it strips the mean and scale, leaving pure shape, and a window's shape changes measurably from
+one sample to the next even when the raw signal barely moves.
+
+Three framings were tried before this one and all would have passed for the wrong reason (a noise
+discord, a high-frequency discord, and a single planted ramp). **For this class of data the exclusion
+zone is not the critical parameter, the window length is.** The 0.5 default is kept because it costs
+nothing and does matter for near-exactly-repeating motifs.
+
+### Fixed
+
+`exclusion=0` now means exactly "only the self-match is removed". It was floored at 1, which silently
+applied a small exclusion zone even when none was asked for and made the parameter impossible to test at
+its own boundary.
+
+### Notes
+
+Per-dimension distances are normalised before the sort, or a channel that happens to be noisier
+contributes larger distances at every k and dominates subset selection through its variance rather than
+through carrying the pattern.
+
+The statistic sits at the window START. Placing it at the centre or the end shifts every reported onset
+by a fixed amount, which is invisible in a plot and fatal in a delay metric.
+
+A gapped series is rejected rather than filled: z-normalisation is undefined over a gap, and quietly
+interpolating would invent the very shape the method is about to measure.
+
 ## [0.06.000] - 2026-08-07
 
 PELT: exact retrospective segmentation, and a deliberate absence.
