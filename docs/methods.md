@@ -29,7 +29,7 @@ baseline invalidates every comparison made on top of it.
 |---|---|---|
 | BOCPD (run-length posterior) | Adams and MacKay (2007), [arXiv:0710.3742](https://arxiv.org/abs/0710.3742) | **implemented** (v0.05.000) |
 | PELT | Killick, Fearnhead and Eckley (2012), *JASA* **107**(500):1590-1598, doi:[10.1080/01621459.2012.737745](https://doi.org/10.1080/01621459.2012.737745) | **implemented** (v0.06.000) |
-| mSTAMP (window and dimension subset) | Yeh, Kavantzas and Keogh (2017), *ICDM 2017*, pp. 565-574 | planned |
+| mSTAMP (window and dimension subset) | Yeh, Kavantzas and Keogh (2017), *ICDM 2017*, pp. 565-574 | **implemented** (v0.07.000) |
 | ADWIN | Bifet and Gavalda (2007), *SDM 2007*, pp. 443-448 | planned |
 | Isolation Forest (healthy-only) | Liu, Ting and Zhou (2008), *ICDM 2008*, pp. 413-422, doi:[10.1109/ICDM.2008.17](https://doi.org/10.1109/ICDM.2008.17) | planned |
 
@@ -51,6 +51,7 @@ baseline invalidates every comparison made on top of it.
 | v0.04.000 | [Multivariate SPC and contributions](methods/03_multivariate-spc-and-contributions.md): Hotelling T-squared, SPE/Q, both classical control limits, and contribution plots for both statistics |
 | v0.05.000 | [BOCPD](methods/04_bayesian-online-changepoint-detection.md): the run-length posterior, a swappable Student-t predictive, and the recorded finding that the paper's changepoint probability is identically the hazard rate |
 | v0.06.000 | [PELT](methods/05_pelt-retrospective-segmentation.md): exact retrospective segmentation, verified against the unpruned quadratic optimum, with no online detection interface on purpose |
+| v0.07.000 | [mSTAMP](methods/06_mstamp-matrix-profile.md): the multidimensional matrix profile via MASS, with the recorded finding that its matching subset names exactly the wrong channels at a discord |
 
 The classical tier is complete and the first SOTA rung has landed. **No controlled
 raw-against-residual comparison has been run**: the releases so far establish only that each method
