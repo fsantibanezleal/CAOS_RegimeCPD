@@ -4,6 +4,75 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.08.000] - 2026-08-08
+
+Streaming drift detectors and healthy-only novelty models. The SOTA tier is now complete.
+
+### Added
+
+- `drift.ADWIN`: adaptive windowing with the Hoeffding-style cut bound. The one detector here that
+  arrives with bounds on both its false positive and false negative rate rather than a threshold to
+  sweep.
+- `drift.KSWIN`: two-sample Kolmogorov-Smirnov windowing, comparing whole distributions rather than
+  means.
+- `drift.ks_two_sample_pvalue`: the KS statistic and its asymptotic p-value, implemented by hand to keep
+  the core numpy-only.
+- `novelty.IsolationForestDetector`, `novelty.OneClassSVMDetector` (extra `learned`) and
+  `novelty.AutoencoderDetector` (extra `deep`, CUDA when available), all trained on healthy data only,
+  all supporting a stacked window so they can see temporal structure.
+- A new `deep` extra, kept separate from `learned` because PyTorch is a two-gigabyte install with a CUDA
+  variant and a user who wants an isolation forest should not pay for it.
+- 43 further tests (267 total), and
+  [docs/methods/07_drift-and-novelty.md](docs/methods/07_drift-and-novelty.md).
+
+### The sign, handled once at the source
+
+scikit-learn's novelty estimators return higher scores for more NORMAL samples; this package returns
+higher for more anomalous. A missed flip produces a detector that scores exactly as badly as it should
+score well, whose budget curve looks like a plausible weak method rather than an error, and which reads
+on a benchmark table as "this approach does not work for this problem". There is an orientation test for
+every model.
+
+### Measured
+
+- ADWIN at delta = 0.002: at most 2 detections in 5000 stationary samples; a three-sigma shift found
+  within 60 samples; a stationary stretch at the NEW level goes quiet again (at most 2 in 1500), so it
+  adapts rather than alarming forever.
+- ADWIN is largely blind to a variance-only change (at most 3 detections in 1600 samples), which is the
+  entire justification for carrying KSWIN. On the same change, KSWIN's statistic rises above three times
+  its quiet median.
+- The KS **D** statistic matches scipy exactly. The p-value uses the Numerical Recipes correction term
+  where scipy does not, agreeing to within about 1% at p = 0.9 and 2% at p = 8e-4. In the deep tail the
+  relative difference reaches about 50% at p = 2e-9 and means nothing, since both are approximations to
+  something around a billionth. Asserted where a p-value is actually read, and by order of magnitude
+  beyond.
+- A windowed model's contrast on a burst of fast oscillation with the SAME amplitude as the baseline (so
+  the marginal distribution is nearly untouched) is more than three times a per-sample model's.
+
+### Two limitations recorded rather than smoothed over
+
+**KSWIN's per-step alpha is not the realised rate**: about 1.2x nominal at alpha = 0.05 and 1.7x at
+alpha = 0.005, with no multiple-testing correction. And **single-record variance is enormous**, because
+overlapping windows make the tests strongly dependent so alarms arrive in clusters: one seed gave 0.0005
+and another 0.008 at the same nominal alpha, a factor of sixteen. Both are inherent to the method, and
+the clustering is a direct argument for counting alarm events rather than samples.
+
+**ADWIN's statistic is a small integer count**, so its alarm-budget curve has only d+1 points where the
+others have hundreds. `delta` should be swept instead whenever ADWIN is compared against anything.
+
+### Notes
+
+Only the direct ADWIN is implemented, not the exponential-histogram ADWIN2. Same cuts, so no loss of
+detection quality, but the per-item cost grows with the window and `max_window` bounds it.
+
+An autoencoder bottleneck at least as wide as the input is rejected: such a network learns the identity,
+reconstructs a fault perfectly, and gives a detector that never fires while looking well trained.
+
+The one-class SVM records the training count it actually used after subsampling, because a model quietly
+trained on a fraction of the baseline is a different model.
+
+Scholkopf et al. (2001) and the KSWIN reference remain UNVERIFIED against primary sources.
+
 ## [0.07.000] - 2026-08-08
 
 mSTAMP: the second, independent answer to "which variables", plus a finding and a measured correction to
