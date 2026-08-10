@@ -49,7 +49,7 @@ from .scaling import degenerate_mask, robust_scale
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.09.002"
+__version__ = "0.09.003"
 
 __all__ = [
     "__version__",

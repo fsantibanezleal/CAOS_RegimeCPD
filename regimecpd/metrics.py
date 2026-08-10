@@ -99,6 +99,11 @@ class UnitScore:
     detected: bool
     delay: float | None
     is_faulty: bool
+    #: Fraction of healthy SAMPLES sitting above the threshold. Event counting deliberately collapses a
+    #: long excursion to one alarm, which is right for costing an operator's attention and wrong for
+    #: telling a quiet detector apart from one pinned permanently on. This is the number that tells them
+    #: apart, and it needs no onset labels, so it can be used to CHOOSE a threshold.
+    healthy_duty: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -114,6 +119,8 @@ class FleetScore:
     n_faulty: int
     median_delay: float | None
     mean_delay: float | None
+    #: Exposure-weighted fraction of healthy time spent above the threshold. See ``UnitScore``.
+    healthy_duty: float = 0.0
 
     def per(self, time_units: float) -> float:
         """The false-alarm rate expressed per ``time_units`` of ``t``.
@@ -127,18 +134,25 @@ class FleetScore:
 def score_unit(outcome: UnitOutcome, threshold: float) -> UnitScore:
     """Score one unit at one threshold, using the event and ordering conventions in the module docstring."""
     det = outcome.detection
-    edges = rising_edges(det.alarms(threshold))
+    alarms = det.alarms(threshold)
+    edges = rising_edges(alarms)
     edge_times = det.t[edges] if edges.size else np.empty(0)
+
+    # Duty over the HEALTHY stretch only, so a unit that alarms correctly after its onset is not
+    # penalised for staying alarmed, which is the desired behaviour.
+    healthy_mask = np.ones(det.t.size, dtype=bool) if outcome.onset_t is None else det.t < outcome.onset_t
+    n_healthy = int(np.count_nonzero(healthy_mask))
+    duty = float(np.count_nonzero(alarms & healthy_mask) / n_healthy) if n_healthy else 0.0
 
     if outcome.onset_t is None:
         return UnitScore(outcome.unit_id, int(edge_times.size), outcome.healthy_exposure,
-                         False, None, is_faulty=False)
+                         False, None, is_faulty=False, healthy_duty=duty)
 
     before = edge_times < outcome.onset_t
     after = edge_times[~before]
     delay = float(after[0] - outcome.onset_t) if after.size else None
     return UnitScore(outcome.unit_id, int(np.count_nonzero(before)), outcome.healthy_exposure,
-                     detected=after.size > 0, delay=delay, is_faulty=True)
+                     detected=after.size > 0, delay=delay, is_faulty=True, healthy_duty=duty)
 
 
 def score_fleet(outcomes: "list[UnitOutcome]", threshold: float) -> FleetScore:
@@ -164,6 +178,7 @@ def score_fleet(outcomes: "list[UnitOutcome]", threshold: float) -> FleetScore:
         n_faulty=len(faulty),
         median_delay=float(np.median(delays)) if delays.size else None,
         mean_delay=float(np.mean(delays)) if delays.size else None,
+        healthy_duty=float(np.mean([s.healthy_duty for s in scores])) if scores else 0.0,
     )
 
 
@@ -195,8 +210,14 @@ def alarm_budget_curve(outcomes: "list[UnitOutcome]",
     return [score_fleet(outcomes, float(t)) for t in th]
 
 
+#: Default cap on the fraction of healthy time a chosen threshold may spend in alarm. A detector pinned
+#: permanently above its threshold has a duty of 1.0; a legitimate quiet operating point is far below
+#: this. The value is loose on purpose: it exists to exclude the degenerate region, not to tune anything.
+MAX_HEALTHY_DUTY = 0.05
+
+
 def threshold_for_budget(outcomes: "list[UnitOutcome]", target_rate: float,
-                         n: int = 400) -> "float | None":
+                         n: int = 400, max_healthy_duty: float = MAX_HEALTHY_DUTY) -> "float | None":
     """The most sensitive threshold whose false-alarm rate still fits inside ``target_rate``.
 
     **The event-counted false-alarm rate is NOT monotone in the threshold**, and this function exists in
@@ -213,21 +234,32 @@ def threshold_for_budget(outcomes: "list[UnitOutcome]", target_rate: float,
     bottom of the grid returns exactly that point, and the resulting benchmark row reads as a
     spectacularly cheap detector.
 
-    So the search descends from the "never fires" end and stops at the first threshold that breaks the
-    budget, returning the lowest threshold in the region CONNECTED to never-firing. That region is the
-    one where lowering the bar genuinely buys sensitivity.
+    **This function used to descend from the never-fires end and stop at the first budget violation**,
+    returning the lowest threshold in the region CONNECTED to never-firing. That avoided the trap and
+    introduced a worse one: because the rate is not monotone, qualifying thresholds can exist BELOW a
+    local violation, and a descending scan cannot see past it. An adversarial review measured the cost on
+    NASA C-MAPSS. On a six-operating-condition subset there were 14 grid thresholds inside the budget
+    below the one this function returned, and reading the arm at the best of them moved detection rate
+    from 0.046 to 0.276. The penalty was not symmetric: the single-condition arms lost 0.02 to 0.04 while
+    the multi-condition arms lost a factor of 3 to 6, so a benchmark using this rule overstated the cost
+    of regime variation by construction.
 
-    Returns ``None`` when even the top of the grid fails the budget, which is a real outcome rather than
-    an error: a detector can be unable to operate at a given budget at all, and quietly returning the
-    maximum threshold would disguise "cannot operate" as "operates and detects nothing".
+    The rule is now: scan the WHOLE grid, keep every threshold whose event rate is inside the budget AND
+    whose healthy DUTY is under ``max_healthy_duty``, and return the lowest of them. Duty is what
+    separates the two regions without using onset labels, so the choice stays legitimate: a permanently
+    alarming detector has duty 1.0 and is excluded on that basis, not on the basis of detecting nothing.
+
+    Returns ``None`` when nothing on the grid qualifies, which is a real outcome rather than an error: a
+    detector can be unable to operate at a given budget at all, and quietly returning the maximum
+    threshold would disguise "cannot operate" as "operates and detects nothing".
     """
-    chosen: float | None = None
-    for score in reversed(alarm_budget_curve(outcomes, n=n)):
-        rate = score.false_alarms_per_unit_time
-        if not np.isfinite(rate) or rate > target_rate:
-            break
-        chosen = score.threshold
-    return chosen
+    qualifying = [
+        s.threshold for s in alarm_budget_curve(outcomes, n=n)
+        if np.isfinite(s.false_alarms_per_unit_time)
+        and s.false_alarms_per_unit_time <= target_rate
+        and s.healthy_duty <= max_healthy_duty
+    ]
+    return min(qualifying) if qualifying else None
 
 
 def bootstrap_ci(outcomes: "list[UnitOutcome]",

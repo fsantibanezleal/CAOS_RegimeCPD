@@ -210,6 +210,59 @@ class TestAlarmBudget:
         assert th is not None and th > floor + 1.0, "the search must not fall into the always-on region"
         assert score_fleet(outs, th).n_detected == 1, "the chosen threshold must actually detect"
 
+    def test_a_qualifying_threshold_below_a_local_violation_is_found(self):
+        """The second trap, the mirror of the first, found by adversarial review on real data.
+
+        Because the event-counted rate is not monotone, thresholds inside the budget can exist BELOW a
+        band that violates it. The previous implementation descended from the never-fires end and STOPPED
+        at the first violation, so it could not see them. On NASA C-MAPSS that cost a six-condition arm a
+        factor of six in detection rate (0.046 against 0.276 available), while costing the
+        single-condition arms almost nothing, which made the benchmark overstate the very effect it was
+        measuring.
+
+        Construction, which is the real mechanism rather than an artificial one: a short burst where the
+        statistic OSCILLATES between 0.6 and 3.0 without returning to the floor. Read at a threshold
+        inside the burst's range every oscillation is a separate rising edge, so the budget is violated.
+        Read at a threshold BELOW the burst the whole burst is a single excursion, so the budget is met
+        and the detector is strictly more sensitive. That pocket is legitimate and is what a descending
+        scan cannot reach.
+        """
+        rng = np.random.default_rng(5)
+        n = 4000
+        stat = np.abs(rng.normal(scale=0.1, size=n))    # a quiet floor, comfortably under 0.5
+        burst = slice(1000, 1080)                        # 2% of the record, so duty stays low
+        k = np.arange(burst.stop - burst.start)
+        stat[burst] = 1.8 + 1.2 * np.cos(k * np.pi / 2)  # oscillates 0.6 to 3.0, never below 0.6
+        outs = [UnitOutcome(_det(stat), None, "h0")]
+
+        grid = candidate_thresholds(outs, n=400)
+        rates = {float(t): score_fleet(outs, float(t)).false_alarms_per_unit_time for t in grid}
+        target = 0.002
+
+        th = threshold_for_budget(outs, target_rate=target)
+        assert th is not None
+        assert score_fleet(outs, th).false_alarms_per_unit_time <= target
+        assert score_fleet(outs, th).healthy_duty <= 0.05
+
+        # THE property: a violating threshold exists ABOVE the chosen one. A scan that descends from the
+        # never-fires end and halts on the first violation can never satisfy this, because it returns
+        # only thresholds in the region connected to never-firing.
+        violations_above = [t for t, r in rates.items() if t > th and r > target]
+        assert violations_above, (
+            f"chose {th} with no violating threshold above it; the construction failed to produce the "
+            "pocket this test is about")
+        assert th < 0.6, f"chose {th}, which is not inside the sub-burst pocket (burst floor is 0.6)"
+
+    def test_duty_is_what_excludes_the_always_on_region(self):
+        # The duty constraint must be the thing doing the work, and it must need no onset labels.
+        rng = np.random.default_rng(3)
+        outs = [UnitOutcome(_det(rng.normal(size=1500)), None, f"h{i}") for i in range(3)]
+        floor = float(np.min([o.detection.statistic.min() for o in outs])) - 1.0
+        assert score_fleet(outs, floor).healthy_duty == pytest.approx(1.0), "always-on means duty 1"
+        th = threshold_for_budget(outs, target_rate=1e-3)
+        assert th is not None
+        assert score_fleet(outs, th).healthy_duty <= 0.05
+
     def test_unreachable_budget_returns_none_rather_than_a_silent_maximum(self):
         # A detector pinned above any threshold cannot operate at a negative budget. Returning the top
         # of the grid would disguise "cannot operate" as "operates and detects nothing".

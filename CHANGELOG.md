@@ -4,6 +4,38 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.003] - 2026-08-10
+
+### Fixed
+
+**`threshold_for_budget` could not see qualifying thresholds below a local budget violation**, and the
+penalty was asymmetric in exactly the direction that flattered the method this package exists to test.
+
+Found by an adversarial review of a downstream product's headline result, on NASA C-MAPSS. The previous
+rule descended from the never-fires end and stopped at the first violation, returning the lowest
+threshold in the region *connected to* never-firing. Because the event-counted false-alarm rate is not
+monotone, qualifying thresholds can exist below a violating band, and that scan cannot reach them.
+
+Measured cost on the six-operating-condition subset: **14 grid thresholds inside the budget sat below the
+one returned**, and reading the arm at the best of them moved detection rate from **0.046 to 0.276**. The
+single-condition arms lost only 0.02 to 0.04, because no such pocket occurred there at all. A benchmark
+using the old rule therefore overstated the cost of operating-regime variation by a factor of 3 to 6, by
+construction rather than by data.
+
+The rule is now: scan the WHOLE grid and return the lowest threshold whose event rate is inside the
+budget **and** whose healthy DUTY is under `max_healthy_duty` (default 0.05).
+
+Duty is the new part and it is what makes this safe. The original trap, a detector pinned permanently
+above its threshold reporting one excursion and a superb rate while detecting nothing, is excluded
+because such a detector has duty 1.0. Crucially duty needs **no onset labels**, so it can legitimately
+choose a threshold; selecting on detection rate could not.
+
+- `UnitScore.healthy_duty` and `FleetScore.healthy_duty`: fraction of healthy time above the threshold.
+- New regression test `test_a_qualifying_threshold_below_a_local_violation_is_found`, constructed around
+  the real mechanism (a burst that reads as many rising edges from inside its range and as ONE excursion
+  from below it). Verified to FAIL against the old rule, which chose 3.0 where the new rule chooses 0.345
+  at a fifth of the budget.
+
 ## [0.09.002] - 2026-08-10
 
 ### Fixed
