@@ -4,6 +4,33 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.001] - 2026-08-10
+
+### Fixed
+
+**A channel constant to within floating-point noise was being standardised by that noise**, producing
+z-scores around 1e14. Every scaler in the package guarded with `spread > 0`, which a strictly positive
+7e-15 passes.
+
+Found on real data, not in review. NASA C-MAPSS `sensor_06` holds 21.61 across a whole baseline window
+and reports a standard deviation of 7.1e-15, on 43 of 100 FD001 units. Later in the record the sensor
+reports the adjacent quantisation level, 21.60. That utterly ordinary 0.01 step becomes a z-score of
+1.4e12, and a CUSUM accumulated it to **8.4e12** over a healthy stretch.
+
+The consequence was not a crash. Because the multivariate statistic is a maximum across channels, one
+unit doing this set the fleet-wide threshold for an entire benchmark, and detection rate at a fixed
+false-alarm budget fell from 0.79 to **0.07**. Every individual unit still looked fine. The benchmark
+simply reported that the method did not work.
+
+- New `regimecpd.scaling` with one shared rule: a channel is standardisable only when
+  `sigma > max(atol, rtol * |mu|)`, with `rtol = 1e-8`, roughly the square root of double precision.
+  That sits far below any real quantisation step (a sensor reporting two decimals has a relative spread
+  near 1e-4) and far above representation noise, so it separates the two without judgement calls.
+- Applied in `classical`, `spc`, `regime`, `residual` and `novelty`, which were the five places the weak
+  guard had been copied to.
+- 12 regression tests reproducing the real mechanism, including one that asserts the OLD guard would
+  still explode, so the suite fails if the fixture ever stops reproducing the defect.
+
 ## [0.09.000] - 2026-08-08
 
 Conformal calibration. **Every rung on the ladder is now implemented.**

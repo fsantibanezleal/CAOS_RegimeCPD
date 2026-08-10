@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .scaling import robust_scale
 from .types import RegimeLabels
 
 __all__ = ["ContextScaler", "DiscreteRegimes", "KMeansRegimes", "kmeans_inertia_sweep"]
@@ -63,7 +64,7 @@ class ContextScaler:
             c = c.T
         self.mean_ = c.mean(axis=0)
         spread = c.std(axis=0)
-        self.scale_ = np.where(spread > 0, spread, 1.0)
+        self.scale_ = robust_scale(spread, self.mean_)
         return self
 
     def transform(self, context: np.ndarray) -> np.ndarray:
