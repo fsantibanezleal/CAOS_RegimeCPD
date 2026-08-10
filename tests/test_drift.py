@@ -31,6 +31,31 @@ class TestADWIN:
         assert fired, "a three-sigma shift must be detected"
         assert 500 <= fired[0] <= 560, f"detected at {fired[0]}, shift at 500"
 
+    def test_cut_threshold_is_the_papers_equation_3_1(self):
+        """Pin epsilon_cut to Bifet and Gavalda (2007) eq. (3.1), recomputed independently here.
+
+        This package shipped `1/m = 1/(n0-1) + 1/(n1-1)` up to v0.09.001 while its own docstring claimed
+        the paper's `1/m = 1/n0 + 1/n1`. The measured cost of that was one sample of detection delay, so
+        no behavioural test caught it and none would have. Only a test that recomputes the formula from
+        the paper can, which is why this one hard-codes the closed form rather than a fixture value.
+        """
+        import math
+
+        det = ADWIN(delta=0.002)
+        for n0, n1, var in ((5, 5, 1.0), (7, 93, 0.25), (500, 3, 4.0), (2, 2, 1e-6)):
+            n = n0 + n1
+            m = 1.0 / (1.0 / n0 + 1.0 / n1)          # the paper: harmonic mean, no minus one
+            log_term = math.log(2.0 / (det.delta / n))  # delta' = delta/n, the rigorous choice
+            want = math.sqrt(2.0 / m * var * log_term) + 2.0 / (3.0 * m) * log_term
+            got = det._cut_threshold(n0, n1, var)
+            assert got == pytest.approx(want, rel=1e-12), f"n0={n0} n1={n1}: {got} != {want}"
+
+        # And specifically NOT the pre-0.09.002 form, which is strictly larger for every split.
+        wrong_m = 1.0 / (1.0 / 4 + 1.0 / 4)
+        lt = math.log(2.0 / (0.002 / 10))
+        wrong = math.sqrt(2.0 / wrong_m * 1.0 * lt) + 2.0 / (3.0 * wrong_m) * lt
+        assert det._cut_threshold(5, 5, 1.0) < wrong, "the n-1 form must no longer be in use"
+
     def test_does_not_fire_on_a_stationary_stream(self):
         # The property ADWIN is chosen for: a bound on the false positive rate, not a tuned heuristic.
         rng = np.random.default_rng(1)

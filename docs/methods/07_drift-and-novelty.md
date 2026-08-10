@@ -19,16 +19,47 @@ Keep a window; wherever a split divides it into two halves whose means differ by
 Hoeffding-style bound, drop the older part.
 
 $$\epsilon_{\mathrm{cut}} = \sqrt{\frac{2}{m}\sigma_W^2 \ln\frac{2}{\delta'}} + \frac{2}{3m}\ln\frac{2}{\delta'},
-\qquad \frac{1}{m} = \frac{1}{n_0-1} + \frac{1}{n_1-1}$$
+\qquad \frac{1}{m} = \frac{1}{n_0} + \frac{1}{n_1}$$
 
-The harmonic $m$ matters: using $n_0$ and $n_1$ directly would understate the bound for a lopsided split,
-which is exactly where a spurious cut is easiest to make.
+This is equation (3.1) of the paper, the practical Bernstein form, with $\sigma_W^2$ "the observed
+variance of the elements in window $W$" computed over the whole window as the paper defines it.
+
+**A correction, recorded rather than quietly fixed.** Up to v0.09.001 this package used
+$1/m = 1/(n_0-1) + 1/(n_1-1)$ and justified it in this file as the paper's formula. It is not. The paper
+says $m = 1/(1/n_0 + 1/n_1)$ with no minus one, and MOA's reference implementation uses a third form
+again, $1/(n_0-4) + 1/(n_1-4)$, from its `mintMinWinLength = 5`. The old term is strictly larger, so $m$
+was smaller and $\epsilon_{\mathrm{cut}}$ **larger**: the detector was more conservative than its own
+stated guarantee.
+
+**How much did it matter? Almost nothing, and that is worth saying too.** Measured head to head, 20 seeds
+of a three-sigma shift at $t = 500$ and 5 seeds of 5000 stationary samples at $\delta = 0.002$:
+
+| $1/m$ | median delay | max delay | stationary detections |
+|---|---|---|---|
+| $1/(n_0-1) + 1/(n_1-1)$ (old, wrong) | 8 | 10 | 0, 0, 0, 0, 0 |
+| $1/n_0 + 1/n_1$ (paper) | **7** | **9** | 0, 0, 0, 0, 0 |
+
+One sample. For $n_0, n_1$ of any size the two terms differ by $O(1/n^2)$, so the correction is real but
+its effect is confined to tiny sub-windows. The reason to make it anyway is that the previous comment in
+this file asserted the paper's formula while the code implemented a different one, and a reader
+reproducing the method from these docs would have got the paper's answer and disagreed with the code.
+
+Note also that the previous version of this page reported "at most 2 detections in 5000 stationary
+samples" and "detected within 60 samples". Both were *consistent* with the wrong formula and so were no
+evidence that it was right. A quiet detector is also what an over-large threshold looks like; only the
+head-to-head comparison separates the two.
+
+**$\delta'$ deliberately differs from MOA.** This package uses the paper's rigorous $\delta' = \delta/n$
+rather than its practical $\delta' = \delta/\ln n$. The paper justifies the looser value by ADWIN2
+checking only $O(\log n)$ subwindows; the implementation here is the direct ADWIN, which checks every one
+of the $O(n)$ splits, so the union bound is over $n$ hypotheses. MOA can use $\delta/\ln n$ because MOA
+implements ADWIN2.
 
 ADWIN earns its place because it arrives with **bounds on both the false positive and the false negative
 rate**, governed by one confidence parameter, rather than a threshold to sweep. That is worth having
-beside conformal calibration as an independent route to the same property. Measured here: at
-$\delta = 0.002$, at most 2 detections in 5000 stationary samples, and a three-sigma shift detected
-within 60 samples.
+beside conformal calibration as an independent route to the same property. Measured here at
+$\delta = 0.002$: **0 detections in 5000 stationary samples** on each of 5 seeds, and a three-sigma shift
+detected at a median of **7 samples** (max 9 over 20 seeds).
 
 ### What is implemented, and what is not
 
@@ -39,9 +70,21 @@ an exponential-histogram summary so memory is logarithmic and the amortised cost
 quality is lost, but the cost per item grows with the window and `max_window` bounds it. On records of a
 few tens of thousands of samples this is fine; on a genuinely unbounded stream it is not.
 
-The theorem statement and the ADWIN2 complexity bounds were **not verified against the primary source**
-(the PDF fetch returned compressed binary), so the guarantee is described as the paper is generally
-reported rather than quoted.
+That omission costs less than it sounds, because **Theorem 3.1 is stated for the direct algorithm**,
+which is the one implemented here. ADWIN2 is the efficiency variant. Quoted verbatim from the paper:
+
+> **Theorem 3.1.** At every time step we have
+> 1. (False positive rate bound). If $\mu_t$ remains constant within $W$, the probability that ADWIN
+>    shrinks the window at this step is at most $\delta$.
+> 2. (False negative rate bound). Suppose that for some partition of $W$ in two parts $W_0 W_1$ (where
+>    $W_1$ contains the most recent items) we have $|\mu_{W_0} - \mu_{W_1}| > 2\epsilon_{\mathrm{cut}}$.
+>    Then with probability $1 - \delta$ ADWIN shrinks $W$ to $W_1$, or shorter.
+
+Verified against the authors' own PDF. The canonical `cs.upc.edu` URL is dead; the working route is the
+Wayback snapshot `https://web.archive.org/web/2020id_/https://www.cs.upc.edu/~gavalda/papers/adwin06.pdf`
+(the `id_` suffix returns the original bytes), cross-checked against Bifet's 2009 UPC thesis. Note the
+thesis renames the two algorithms ADWIN0 and ADWIN, the reverse of the paper's naming, and its
+restatement of the complexity bound drops a square from the worst case.
 
 ### ADWIN adapts, and it is blind to variance
 

@@ -99,9 +99,18 @@ class ADWIN:
 
     def _cut_threshold(self, n0: int, n1: int, variance: float) -> float:
         n = n0 + n1
-        # The harmonic term is the paper's 1/m; using n0 and n1 directly instead would understate the
-        # bound for a lopsided split, which is exactly where a spurious cut is easiest to make.
-        m = 1.0 / (1.0 / max(n0 - 1, 1) + 1.0 / max(n1 - 1, 1))
+        # 1/m is the harmonic term of Bifet and Gavalda (2007) Section 3.2, VERBATIM: "m = 1 / (1/n0 +
+        # 1/n1) (harmonic mean of n0 and n1)". Earlier versions of this file used 1/(n0-1) + 1/(n1-1),
+        # which is strictly larger, hence a smaller m and a LARGER, more conservative epsilon_cut than
+        # the paper's. That was a defect: it matched neither the paper nor MOA (whose reference
+        # implementation uses 1/(n0-4) + 1/(n1-4) via its mintMinWinLength = 5) and it made this
+        # detector quieter than its own stated guarantee. Corrected in v0.09.002.
+        m = 1.0 / (1.0 / max(n0, 1) + 1.0 / max(n1, 1))
+        # delta' = delta/n, the paper's RIGOROUS choice, deliberately kept over its practical
+        # delta' = delta/ln(n). The paper justifies the looser value by ADWIN2 checking only O(log n)
+        # subwindows; this class is the DIRECT ADWIN, which checks every one of the O(n) splits below,
+        # so the union bound it needs is over n hypotheses, not log n. MOA pairs delta/ln(n) with the
+        # Bernstein form because MOA implements ADWIN2.
         delta_prime = self.delta / max(n, 1)
         log_term = math.log(2.0 / delta_prime)
         return math.sqrt(2.0 / m * variance * log_term) + 2.0 / (3.0 * m) * log_term

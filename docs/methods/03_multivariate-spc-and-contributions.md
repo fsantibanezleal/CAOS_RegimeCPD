@@ -141,5 +141,17 @@ provide. Prefer running the two separately and reporting both.
   (2000). doi:[10.1016/S0169-7439(00)00062-9](https://doi.org/10.1016/S0169-7439(00)00062-9). Covers
   contributions for both statistics and treats the smearing properly rather than presenting contributions
   as diagnosis.
-- Hotelling, H. "Multivariate Quality Control" (1947). **Not verified against a primary source** in the
-  research pass behind this package; recorded as UNVERIFIED.
+- Hotelling, Harold. "Multivariate Quality Control, Illustrated by the Air Testing of Sample
+  Bombsights." Chapter 3 in *Selected Techniques of Statistical Analysis for Scientific and Industrial
+  Research and Production and Management Engineering*, by the Statistical Research Group, Columbia
+  University; edited by Churchill Eisenhart, Millard W. Hastay and W. Allen Wallis. New York and London:
+  McGraw-Hill, 1947, pp. 111-184. **Verified** from the scanned title page and table of contents
+  (Internet Archive `in.ernet.dli.2015.264585`) plus K10plus MARC records.
+
+  Three things this package had wrong, or would have got wrong by copying the usual short citation.
+  The chapter title is longer than the running head everyone quotes. The book title is
+  *Selected Techniques of Statistical Analysis*, not the *Techniques of Statistical Analysis* that the
+  copyright page verso gives, which is why both forms circulate. And the chapter is **not the origin of
+  $T^2$**: Hotelling attributes the statistic to the generalized Student ratio on p. 114 of the chapter
+  itself. What the chapter contributes is the quality-control application, which is what this package
+  uses it for.

@@ -4,6 +4,45 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.002] - 2026-08-10
+
+### Fixed
+
+**ADWIN's `epsilon_cut` used a harmonic term matching neither the paper nor MOA**, while this package's
+own docstring and method page asserted it was the paper's. Found by opening the primary source, not by a
+test.
+
+Bifet and Gavalda (2007), Section 3.2, verbatim: `m = 1 / (1/n0 + 1/n1) (harmonic mean of n0 and n1)`.
+This package used `1/m = 1/(n0-1) + 1/(n1-1)`. MOA's reference implementation uses a third form again,
+`1/(n0-4) + 1/(n1-4)`, from its `mintMinWinLength = 5`. Corrected to the paper.
+
+The old term is strictly larger, so `m` was smaller and `epsilon_cut` **larger**: the detector was more
+conservative than the guarantee it advertised. **The measured cost was one sample.** Head to head over 20
+seeds of a three-sigma shift and 5 seeds of 5000 stationary samples at `delta = 0.002`, median detection
+delay went from 8 to 7 with zero stationary false alarms on both. The correction matters because a reader
+reproducing the method from the docs would have got the paper's answer and disagreed with the code, not
+because the numbers moved.
+
+Two lessons recorded rather than fixed away. The previously documented behaviour, "at most 2 detections
+in 5000 stationary samples", was *consistent* with the wrong formula and was therefore no evidence it was
+right; a quiet detector is also what an over-large threshold looks like. And the whole existing drift
+suite passed both before and after, which is exactly what a behavioural test does when the defect is
+worth `O(1/n^2)`. The new `test_cut_threshold_is_the_papers_equation_3_1` recomputes the closed form from
+the paper instead.
+
+`delta' = delta/n` is **kept** over MOA's `delta/ln n` and now documented as deliberate: the paper
+justifies the looser value by ADWIN2 checking only `O(log n)` subwindows, and this class is the direct
+ADWIN, which checks all `O(n)` splits.
+
+### Changed
+
+- ADWIN's guarantee is now quoted verbatim from the primary source rather than paraphrased, with the
+  note that **Theorem 3.1 is stated for the direct algorithm implemented here**, not for ADWIN2. The
+  canonical `cs.upc.edu` PDF URL is dead; the working route is recorded in the method page.
+- The Hotelling (1947) citation is corrected and promoted from UNVERIFIED. The book is *Selected
+  Techniques of Statistical Analysis*, the chapter title is longer than the usual short form, and the
+  chapter is **not** the origin of `T^2`, which Hotelling himself attributes on p. 114.
+
 ## [0.09.001] - 2026-08-10
 
 ### Fixed
