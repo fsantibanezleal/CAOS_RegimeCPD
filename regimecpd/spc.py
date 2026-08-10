@@ -54,6 +54,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .scaling import robust_scale
 from .types import Attribution, Detection, Series
 
 __all__ = ["PCAMonitor", "normal_quantile", "chi2_quantile"]
@@ -171,7 +172,7 @@ class PCAMonitor:
         # Autoscaling, not covariance PCA. Without it the component structure is decided by whichever
         # channel happens to be measured in the largest units, which is a property of the instrumentation
         # rather than of the machine.
-        self.scale_ = np.where(spread > 0, spread, 1.0)
+        self.scale_ = robust_scale(spread, self.mean_)
         z = (xb - self.mean_) / self.scale_
 
         # SVD of the centred data rather than eigendecomposition of the covariance: same answer, better
