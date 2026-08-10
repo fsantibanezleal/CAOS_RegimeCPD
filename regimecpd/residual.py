@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from .regime import DiscreteRegimes, KMeansRegimes
+from .scaling import robust_scale
 from .types import RegimeLabels, Residual, Series
 
 __all__ = ["RegimeResidualizer", "make_arms"]
@@ -118,7 +119,7 @@ class RegimeResidualizer:
             # A channel that never moves inside a regime carries no information there. Dividing by its
             # spread would turn rounding noise into an infinite residual, which then dominates every
             # multivariate statistic downstream.
-            self.scale_[k] = np.where(spread > 0, spread, 1.0)
+            self.scale_[k] = robust_scale(spread, self.mean_[k])
             self.usable_.add(k)
 
         if not self.usable_:

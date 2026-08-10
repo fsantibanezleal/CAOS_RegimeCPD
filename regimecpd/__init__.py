@@ -45,10 +45,11 @@ from .novelty import AutoencoderDetector, IsolationForestDetector, OneClassSVMDe
 from .pelt import PELT, optimal_partition, segmentation_error
 from .regime import ContextScaler, DiscreteRegimes, KMeansRegimes, kmeans_inertia_sweep
 from .residual import RegimeResidualizer, make_arms
+from .scaling import degenerate_mask, robust_scale
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.09.000"
+__version__ = "0.09.001"
 
 __all__ = [
     "__version__",
@@ -97,6 +98,9 @@ __all__ = [
     "AdaptiveConformal",
     "conformalise",
     "calibration_report",
+    # scaling guard
+    "robust_scale",
+    "degenerate_mask",
     # measurement
     "UnitOutcome",
     "UnitScore",

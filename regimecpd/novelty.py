@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .scaling import robust_scale
 from .types import Detection, Series
 
 __all__ = ["IsolationForestDetector", "OneClassSVMDetector", "AutoencoderDetector"]
@@ -75,7 +76,7 @@ class _Windowed:
         xb = x[rows]
         self.mean_ = xb.mean(axis=0)
         spread = xb.std(axis=0)
-        self.scale_ = np.where(spread > 0, spread, 1.0)
+        self.scale_ = robust_scale(spread, self.mean_)
         self.names_ = baseline.names
         return self._stack((xb - self.mean_) / self.scale_)
 

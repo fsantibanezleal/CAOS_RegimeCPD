@@ -46,6 +46,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .scaling import robust_scale
 from .types import Detection, Series
 
 __all__ = ["Shewhart", "CUSUM", "EWMA", "PageHinkley"]
@@ -67,9 +68,10 @@ class _BaselineScaler:
         # nan-aware, because a baseline may itself be a residual with unassignable stretches.
         self.mean_ = np.nanmean(np.where(finite, x, np.nan), axis=0)
         spread = np.nanstd(np.where(finite, x, np.nan), axis=0)
-        # A channel that never moves in the baseline cannot be standardised. Scale 1 leaves it in raw
-        # units rather than producing infinities that would dominate the across-channel maximum.
-        self.scale_ = np.where(np.isfinite(spread) & (spread > 0), spread, 1.0)
+        # A channel that does not meaningfully move in the baseline cannot be standardised. Scale 1
+        # leaves it in raw units rather than amplifying floating-point noise into an enormous
+        # z-score that would dominate the across-channel maximum. See regimecpd.scaling.
+        self.scale_ = robust_scale(spread, self.mean_)
         self.names_ = baseline.names
 
     def _z(self, series: Series) -> np.ndarray:
