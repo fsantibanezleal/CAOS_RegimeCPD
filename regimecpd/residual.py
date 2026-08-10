@@ -119,7 +119,18 @@ class RegimeResidualizer:
             # A channel that never moves inside a regime carries no information there. Dividing by its
             # spread would turn rounding noise into an infinite residual, which then dominates every
             # multivariate statistic downstream.
-            self.scale_[k] = robust_scale(spread, self.mean_[k])
+            #
+            # The location handed to the guard is the CHANNEL's own magnitude, never the residual's. The
+            # relative floor exists so that a channel sitting at 21610 is judged against 21610 rather
+            # than against zero, and under `linear` the residual mean is approximately zero BY
+            # CONSTRUCTION because the design matrix carries an intercept. Passing it collapsed the floor
+            # to atol=1e-12, so a ridge-perturbed fit on a channel constant at 21610 left a spread of
+            # 8.2e-07 that was accepted as real: the dead channel came back with a median absolute
+            # residual of 0.74 and a maximum of 5.0, indistinguishable from a live one, and it drove 552
+            # of 1199 CUSUM samples on a fully healthy record. That is the sensor_06 hole reopened one
+            # branch over. Found by an engine review, not by the 301 tests that were green around it.
+            location = np.abs(xk).mean(axis=0)
+            self.scale_[k] = robust_scale(spread, location)
             self.usable_.add(k)
 
         if not self.usable_:

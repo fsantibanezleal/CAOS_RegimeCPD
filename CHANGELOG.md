@@ -4,6 +4,32 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.004] - 2026-08-10
+
+### Fixed
+
+**The degenerate-scale hole was reopened one branch over, in `RegimeResidualizer(method="linear")`.**
+Found by an engine review, not by the 301 tests that were green around it.
+
+`robust_scale(spread, location)` floors a channel's spread at `max(atol, rtol * |location|)`, and the
+relative term is the entire point: a channel sitting at 21610 must be judged against 21610, not against
+zero. The `linear` branch passed the RESIDUAL mean as the location, which an intercept in the design
+matrix forces to approximately zero by construction. The floor therefore collapsed to `atol = 1e-12`,
+and a ridge-perturbed fit on a channel constant at 21610 left a spread of 8.2e-07 that was accepted as
+real.
+
+The consequence was a dead channel that spoke: median absolute residual **0.74**, maximum **5.0**, on a
+record where the channel never moved at all. Downstream it drove **552 of 1199** CUSUM samples on a fully
+healthy record, indistinguishable from a live channel.
+
+The location is now the channel's own mean absolute magnitude, computed before residualisation, which
+fixes the same collapse in the `zscore` branch for a channel oscillating about zero (where the signed
+mean is also approximately zero while the channel is perfectly live).
+
+Measured: the dead channel's maximum residual falls from **5.0 to 3.2e-06**. It is not exactly zero and
+cannot be, since a ridge solve at that magnitude leaves float64 roundoff; the new tests assert it stays
+three orders of magnitude below a live channel's.
+
 ## [0.09.003] - 2026-08-10
 
 ### Fixed
