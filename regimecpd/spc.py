@@ -198,6 +198,13 @@ class PCAMonitor:
             raise ValueError("the baseline has no direction with non-zero variance")
 
         self.loadings_ = vt[:a].T
+        # The RESIDUAL subspace needs the same relative guard the retained one just got. When a channel is
+        # an exact linear combination of the others, its residual eigenvalue is roundoff: `spe` returns
+        # roundoff and `spe_limit` calibrates itself to the same roundoff, so the two stay comparable and
+        # the chart looks calibrated while measuring nothing. Directions below the tolerance are recorded
+        # so `spe` can drop them instead of squaring float noise.
+        # Recorded so `spe_limit` can refuse to calibrate itself on roundoff. See its docstring.
+        self.residual_tol_ = tol
         self.eigenvalues_ = eigenvalues[:a]
         self.residual_eigenvalues_ = eigenvalues[a:]
         self.names_ = baseline.names
@@ -235,6 +242,10 @@ class PCAMonitor:
         out = np.full(len(z), np.nan)
         ok = np.all(np.isfinite(z), axis=1)
         if ok.any():
+            # The FULL residual, deliberately. An earlier attempt at the degeneracy fix dropped the
+            # residual directions with no baseline variance; that destroys the statistic, because a break
+            # in an exact linear relationship among channels lands entirely in one of those directions.
+            # SPE exists to catch exactly that, so the guard belongs on the LIMIT, not here.
             residual = z[ok] - (z[ok] @ self.loadings_) @ self.loadings_.T
             out[ok] = np.sum(residual ** 2, axis=1)
         return out
@@ -268,6 +279,14 @@ class PCAMonitor:
         lam = self.residual_eigenvalues_
         if lam is None or lam.size == 0:
             return 0.0
+        # A residual subspace whose eigenvalues are ROUNDOFF cannot produce a meaningful limit. When a
+        # channel is an exact linear combination of the others, the residual variance is around 1e-30:
+        # `spe` returns roundoff, this expansion scales itself to the same roundoff, and the two remain
+        # comparable, so the chart looks calibrated while measuring nothing. NaN says "undefined", which
+        # a caller can see; a tiny number says "calibrated", which is a lie.
+        tol = getattr(self, "residual_tol_", 0.0)
+        if float(lam.sum()) <= max(tol, 0.0):
+            return float("nan")
         theta1, theta2, theta3 = lam.sum(), (lam ** 2).sum(), (lam ** 3).sum()
         if theta1 <= 0 or theta2 <= 0:
             return 0.0

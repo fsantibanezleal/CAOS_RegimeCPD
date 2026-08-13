@@ -89,6 +89,9 @@ def _make_cost(x: np.ndarray, kind: str):
     d = x.shape[1]
     total_var = np.maximum(x.var(axis=0), _TINY)
 
+    # Per-channel variance over the WHOLE series, used only to scale the degeneracy floor below.
+    _col_var = np.asarray(x, dtype=float).var(axis=0)
+
     if kind == "meanvar":
         def cost(s: int, t: int) -> float:
             n = t - s
@@ -96,7 +99,13 @@ def _make_cost(x: np.ndarray, kind: str):
                 return 0.0
             seg_sum = cs[t] - cs[s]
             seg_sq = css[t] - css[s]
-            var = np.maximum((seg_sq - seg_sum ** 2 / n) / n, _TINY)
+            var = (seg_sq - seg_sum ** 2 / n) / n
+            # RELATIVE floor, not the absolute `_TINY`. A channel held constant to within floating-point
+            # noise has a segment variance around 1e-30, and an absolute clamp turns that into log(1e-12):
+            # a huge, arbitrary cost difference between segments that differ only in roundoff, which the
+            # segmenter then happily "explains" by cutting. Scaling the floor by the channel's own overall
+            # variance makes a dead channel cost the same everywhere, so it contributes no cuts.
+            var = np.maximum(var, np.maximum(_col_var, 1.0) * 1e-12)
             return float(n * np.sum(np.log(var)))
         return cost, 2 * d
 

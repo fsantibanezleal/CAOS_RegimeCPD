@@ -4,6 +4,57 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.005] - 2026-08-11
+
+### Fixed
+
+Five defects from the 2026-08-10 engine review, every one reproduced against a GREEN 301-test suite.
+None of them raised, none produced an obviously wrong shape, and every one produced a number a reader
+would accept.
+
+**D6. A gap inside a sustained excursion counted as a SECOND alarm.** `alarms()` maps NaN to False, which
+is right for a leading warm-up and wrong mid-record: `rising_edges` then saw a fresh not-alarming to
+alarming transition on the far side of the gap. The residual arm carries NaN BY DESIGN (a sample outside
+every regime seen in the baseline is deliberately unassigned), so the bias fell on precisely the arm this
+package exists to evaluate, inflating its false-alarm count by roughly 18x at 10 percent unassigned.
+`rising_edges` now takes an `observed` mask and only breaks an excursion on an observed sample below the
+threshold.
+
+**D7. A NaN onset scored as a DETECTION and erased the fleet delay.** `edge_times < nan` is False for
+every edge, so nothing was charged as a false alarm, every edge landed after the onset, and the unit came
+back detected with delay NaN, which the median then propagated to the whole fleet. One unit with missing
+data erased every other unit's reported delay. Now refused with a clear error: `None` means healthy, and
+NaN is missing data that cannot be scored as either outcome.
+
+**D9. A degenerate cluster radius rejected its own regime.** When a cluster's baseline members sit at one
+point (a held setpoint, a discrete operating condition), its quantile radius is roundoff and the novelty
+test is true for every sample it will ever see, including one exactly on its centre. The regime existed,
+was never assignable, and showed up only as missing coverage. The radius now has a floor relative to the
+spread of the centres.
+
+**D3. PELT meanvar segmented on floating-point roundoff.** The variance was clamped by an ABSOLUTE
+1e-12, so a channel constant to within noise contributed a large arbitrary cost difference between
+segments differing only in roundoff, which the segmenter then explained by cutting. The floor is now
+relative to the channel's own variance.
+
+**D4. spe_limit calibrated itself to roundoff.** When a channel is an exact linear combination of the
+others the residual variance is around 1e-30, so SPE returned roundoff and the limit scaled to the same
+roundoff: comparable to each other, and measuring nothing. It now returns NaN, which says undefined,
+where a tiny number said calibrated.
+
+**D2. mSTAMP decided "flat" twice, with two estimators and an absolute threshold.** The window sigma came
+from prefix sums and the query sigma from a direct call, and both were compared to an absolute 1e-10, so
+on a near-constant window which branch fired depended on rounding, and the decision was unit dependent.
+One estimator now, with a floor relative to the series' own spread.
+
+### Note on a fix that was WRONG and was caught before release
+
+The first attempt at D4 dropped the residual directions carrying no baseline variance from `spe` itself.
+That destroys the statistic: a break in an exact linear relationship lands ENTIRELY in one of those
+directions, which is what SPE exists to catch. The accompanying "does it still catch a real break" test
+failed, and the guard was moved to the limit where it belongs. Recorded because the near miss is the
+argument for writing that test at all.
+
 ## [0.09.004] - 2026-08-10
 
 ### Fixed

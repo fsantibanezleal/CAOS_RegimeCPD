@@ -237,7 +237,21 @@ class KMeansRegimes:
             radii[j] = np.quantile(member_d, self.novelty_quantile) if member_d.size else np.nan
         if np.all(np.isnan(radii)):
             radii = np.zeros(self.n_regimes)
-        self.radii_ = np.where(np.isnan(radii), np.nanmax(radii), radii)
+        radii = np.where(np.isnan(radii), np.nanmax(radii), radii)
+        # A DEGENERATE radius rejects the regime it belongs to. When a cluster's baseline members all sit
+        # at essentially the same point (a discrete operating condition, a held setpoint), its quantile
+        # distance is roundoff, and `distance > novelty_factor * ~0` is then true for every sample the
+        # cluster will ever see, including one sitting exactly on its centre. The regime is created, is
+        # never assignable, and shows up only as missing coverage.
+        #
+        # The floor is relative to the SPREAD OF THE CENTRES, which is the scale distances live on here,
+        # so it means the same thing whatever units the context arrived in.
+        if self.centres_ is not None and len(self.centres_) > 1:
+            spread = float(np.linalg.norm(self.centres_.std(axis=0)))
+        else:
+            spread = 1.0
+        floor = max(spread, 1.0) * 1e-9
+        self.radii_ = np.maximum(radii, floor)
         return self
 
     def label(self, context: np.ndarray) -> RegimeLabels:

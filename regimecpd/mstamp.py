@@ -84,13 +84,22 @@ def mass_distance_profile(query: np.ndarray, series: np.ndarray,
     """
     m = len(query)
     n = len(series)
-    q_mean, q_sigma = float(query.mean()), float(query.std())
+    q_mean = float(query.mean())
+    # The SAME estimator the window statistics use. `_sliding_stats` computes sigma from prefix sums as
+    # sqrt(total_sq/m - mean^2); calling `query.std()` here computed the same quantity a different way,
+    # and the two were then compared against one absolute constant. On a near-constant window the two
+    # estimators disagree in the last digits, so which branch fired depended on rounding.
+    q_sigma = float(np.sqrt(max(float((query ** 2).mean()) - q_mean ** 2, 0.0)))
 
     # Correlate the reversed query with the series: numpy's FFT convolution gives all lags at once.
     product = np.fft.irfft(np.fft.rfft(series, n) * np.fft.rfft(query[::-1], n), n)[m - 1:]
 
-    flat_q = q_sigma < _TINY
-    flat_w = sigma < _TINY
+    # RELATIVE floor. An absolute 1e-10 calls a window of millivolt readings flat and a window of
+    # kilopascal readings live, for the same physical steadiness. The scale is the series' own spread.
+    scale = max(float(np.std(series)), 1.0)
+    flat = max(_TINY, scale * 1e-9)
+    flat_q = q_sigma < flat
+    flat_w = sigma < flat
 
     with np.errstate(divide="ignore", invalid="ignore"):
         corr = (product - m * q_mean * mean) / (m * q_sigma * sigma)

@@ -47,17 +47,43 @@ __all__ = [
 ]
 
 
-def rising_edges(mask: np.ndarray) -> np.ndarray:
+def rising_edges(mask: np.ndarray, observed: "np.ndarray | None" = None) -> np.ndarray:
     """Indices where ``mask`` transitions from not-alarming to alarming.
 
     A mask that is already True at index 0 counts as an edge there: the record opens mid-excursion, and
     that is an alarm the operator sees.
+
+    ``observed`` marks the samples where the statistic was DEFINED. Pass it whenever the statistic can be
+    NaN mid-record, which on the residual arm is by design: a sample whose context falls outside every
+    regime seen in the baseline is deliberately left unassigned, so its residual is NaN.
+
+    Without it, an unobserved gap inside a sustained excursion splits one alarm into two. `alarms()` maps
+    NaN to False, which is right for the leading warm-up and wrong in the middle: `rising_edges` then sees
+    a fresh not-alarming to alarming transition on the far side of the gap and counts a second event. The
+    arm that carries NaN by design is exactly the arm this product is arguing for, so the bias ran against
+    the residual arm and inflated its false-alarm count, by roughly 18x at 10% unassigned.
+
+    With ``observed``, an excursion is only broken by an OBSERVED sample that is below the threshold.
     """
     m = np.asarray(mask, dtype=bool)
     if m.size == 0:
         return np.empty(0, dtype=int)
-    prev = np.concatenate(([False], m[:-1]))
-    return np.flatnonzero(m & ~prev)
+    if observed is None:
+        prev = np.concatenate(([False], m[:-1]))
+        return np.flatnonzero(m & ~prev)
+
+    ok = np.asarray(observed, dtype=bool)
+    # Carry the last OBSERVED alarm state forward across unobserved samples, so a gap neither starts nor
+    # ends an excursion; it simply says nothing.
+    state = np.zeros(m.size, dtype=bool)
+    last = False
+    for i in range(m.size):
+        if ok[i]:
+            last = bool(m[i])
+        state[i] = last
+    prev = np.concatenate(([False], state[:-1]))
+    # An edge is only reported on a sample that was actually observed.
+    return np.flatnonzero(state & ~prev & ok)
 
 
 @dataclass(frozen=True)
@@ -134,8 +160,20 @@ class FleetScore:
 def score_unit(outcome: UnitOutcome, threshold: float) -> UnitScore:
     """Score one unit at one threshold, using the event and ordering conventions in the module docstring."""
     det = outcome.detection
+    if outcome.onset_t is not None and not np.isfinite(outcome.onset_t):
+        # A NaN onset used to score as a DETECTION and poison the fleet. `edge_times < nan` is False for
+        # every edge, so nothing was charged as a false alarm, every edge landed in `after`, the unit came
+        # back detected with delay NaN, and `np.median` over the delays returned NaN for the whole fleet.
+        # One unit with a missing onset therefore erased the reported delay of every other unit.
+        raise ValueError(
+            f"unit {outcome.unit_id!r} has a non-finite onset_t ({outcome.onset_t}). Use None for a "
+            "healthy unit; a NaN onset is missing data and cannot be scored as either outcome.")
+
     alarms = det.alarms(threshold)
-    edges = rising_edges(alarms)
+    # The statistic is NaN where nothing was observable. Passing that through means a gap inside an
+    # excursion does not split it into two alarms; see `rising_edges`.
+    observed = np.isfinite(det.statistic)
+    edges = rising_edges(alarms, observed)
     edge_times = det.t[edges] if edges.size else np.empty(0)
 
     # Duty over the HEALTHY stretch only, so a unit that alarms correctly after its onset is not
