@@ -4,6 +4,25 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.006] - 2026-08-11
+
+### Fixed
+
+**The degenerate-scale guard was ineffective in `novelty.py` too**, which is the third module to carry
+the same defect and the one where it mattered most.
+
+`_Windowed._fit_scaler` passed the signed channel MEAN as the location for `robust_scale`. The relative
+floor is `max(atol, rtol * |location|)`, so for a channel centred on zero the floor collapses to
+`atol = 1e-12` and a channel that never moves is standardised by its own roundoff.
+
+These are exactly the rungs run on the RESIDUAL arm, whose channels are centred on zero BY CONSTRUCTION,
+so every one of them was exposed. The location is now the channel's mean absolute magnitude, matching
+`residual.py` (0.09.004) and `classical.py`.
+
+Three modules, one mistake, found one at a time. The lesson recorded rather than fixed away: a shared
+helper whose CALLER chooses the reference quantity will be called wrongly somewhere, and the guard should
+probably derive the location itself rather than accept it.
+
 ## [0.09.005] - 2026-08-11
 
 ### Fixed

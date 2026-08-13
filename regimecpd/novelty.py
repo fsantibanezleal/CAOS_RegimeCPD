@@ -75,8 +75,13 @@ class _Windowed:
             raise ValueError("the baseline has too few complete samples to fit")
         xb = x[rows]
         self.mean_ = xb.mean(axis=0)
+        # The location for the scale floor is the channel's own MAGNITUDE, never its signed mean. These
+        # detectors are run on the RESIDUAL arm, whose channels are centred on zero by construction, so a
+        # signed mean collapses the relative floor to atol and lets a dead channel through. Same defect
+        # as D1 in residual.py, one module over.
+        location = np.abs(xb).mean(axis=0)
         spread = xb.std(axis=0)
-        self.scale_ = robust_scale(spread, self.mean_)
+        self.scale_ = robust_scale(spread, location)
         self.names_ = baseline.names
         return self._stack((xb - self.mean_) / self.scale_)
 
