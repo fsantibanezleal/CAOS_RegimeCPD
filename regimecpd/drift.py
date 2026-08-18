@@ -51,9 +51,13 @@ class ADWIN:
     .. math::
         \\epsilon_{\\mathrm{cut}} = \\sqrt{\\frac{2}{m}\\,\\sigma^2_W \\ln\\frac{2}{\\delta'}}
         + \\frac{2}{3m}\\ln\\frac{2}{\\delta'}, \\qquad
-        \\frac{1}{m} = \\frac{1}{n_0 - 1} + \\frac{1}{n_1 - 1}
+        m = \\frac{1}{1/n_0 + 1/n_1}
 
     the older part is dropped. ``delta`` is the confidence: the paper bounds the false positive rate by it.
+    (The harmonic mean ``m`` matches the paper's Section 3.2 and ``_cut_threshold`` below. Before
+    v0.09.002 both used ``1/m = 1/(n_0 - 1) + 1/(n_1 - 1)``; that fix updated the code and its
+    comment but left this docstring equation stale until v0.09.007, which is exactly the
+    documented-code-versus-running-code drift this package tries to make impossible.)
 
     .. rubric:: What is implemented here, and what is not
 
@@ -67,9 +71,11 @@ class ADWIN:
     tens of thousands of samples this is fine; on a genuinely unbounded stream it is not, and ADWIN2 would
     be the thing to add.
 
-    The theorem statement and the ADWIN2 complexity bounds were **not verified against the primary source**
-    during the research pass behind this package (the PDF fetch returned compressed binary), so the
-    guarantee is described here as the paper is generally reported rather than quoted.
+    Verification status, reconciled in v0.09.007: the original research pass could not open the paper
+    (the PDF fetch returned compressed binary), so an earlier version of this docstring described the
+    guarantee as generally reported. The v0.09.002 fix subsequently read the paper directly: the cut
+    threshold above quotes Section 3.2 and ``_cut_threshold`` matches it. The ADWIN2 complexity
+    bounds specifically remain reported rather than quoted, since ADWIN2 is not implemented here.
 
     Parameters
     ----------
