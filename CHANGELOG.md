@@ -4,6 +4,26 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.09.007] - 2026-08-17
+
+### Fixed
+
+**The ADWIN class docstring still showed the pre-0.09.002 harmonic term.** The 0.09.002 fix updated
+`_cut_threshold` and its comment to the paper's `m = 1/(1/n0 + 1/n1)` but left the docstring equation
+at the old `1/m = 1/(n0-1) + 1/(n1-1)`, so the class documented one bound while computing another. The
+docstring now shows the implemented form and records the drift. Found by an engine-verified
+documentation extraction that compared every equation against the code, which is exactly the
+documented-code-versus-running-code failure mode this package's own history warns about.
+
+**The ADWIN verification disclaimer contradicted the 0.09.002 commit.** The module still said the
+theorem was never verified against the primary source, while the 0.09.002 fix had read Section 3.2 and
+quoted it verbatim in the code comment. The disclaimer now states precisely what was verified (the cut
+threshold) and what remains reported rather than quoted (the ADWIN2 complexity bounds, which this
+package does not implement).
+
+No code paths changed; this release is documentation-only. Product bakes pinned to 0.9.6 are
+numerically identical.
+
 ## [0.09.006] - 2026-08-11
 
 ### Fixed
