@@ -155,7 +155,12 @@ follows the standard formulation above rather than a specific paper's notation.
 
 ## What is not claimed here
 
-None of these have been run against the regime-conditioned residual in a controlled comparison yet. This
-release establishes that the baselines behave the way their sources say they behave. Whether conditioning
-on regime reduces their false-alarm rate at a fixed detection delay is the question the C-MAPSS contrast
-answers, and it may answer it negatively.
+This release established that the baselines behave the way their sources say they behave; it did not run
+any of them against the regime-conditioned residual. That comparison has since been run downstream by
+TruckVitals, the consumer of this package: its C-MAPSS contrast runs CUSUM on both arms at a fixed
+false-alarm budget, and its synthetic benchmark bakes budget curves for every rung on this page
+(Shewhart, CUSUM, EWMA, Page-Hinkley), raw and residual, each reachable budget with a bootstrap interval
+over units. Whether conditioning helps DETECTION at a fixed false-alarm budget is therefore a measured
+number there, not an open question here, and the design would have reported a negative answer with the
+same intervals. (Downstream also WITHDREW any false-alarm-reduction claim: on its synthetic lane the raw
+arm wins that metric outright, which is exactly the kind of answer the design had to be able to return.)
