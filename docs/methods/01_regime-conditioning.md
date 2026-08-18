@@ -154,9 +154,12 @@ A raw channel whose variance is over 90% between-regime is largely reporting whi
 in. That is what a change detector latches onto.
 
 **This is not yet the product's central claim.** It shows the residual removes the regime; it does not
-show that removing the regime reduces false alarms at a fixed detection delay. That requires detectors
-(E3 onward) and the controlled C-MAPSS contrast, and it may come back negative. What is established here
-is that the input to that experiment is what it says it is.
+show that removing the regime helps a detector. That requires detectors (E3 onward) and the controlled
+C-MAPSS contrast, which has since been run downstream by TruckVitals. The measured axis is DETECTION at
+a matched false-alarm budget, and there it came back positive (0.17 recovering to 0.95 under six
+regimes); the false-alarm-reduction framing this paragraph originally used was WITHDRAWN downstream,
+because neither lane demonstrates it. What is established here is that the input to that experiment is
+what it says it is.
 
 `test_a_fault_survives_residualisation` pins the other side: conditioning must remove the regime and not
 the signal. A residual that also flattened the fault would be useless in the most flattering possible

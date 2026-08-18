@@ -41,7 +41,7 @@ baseline invalidates every comparison made on top of it.
 | method | primary source | status |
 |---|---|---|
 | Regime conditioning (segmentation + residual) | [01 Regime conditioning](methods/01_regime-conditioning.md) | **implemented** (v0.02.000) |
-| Regime-conditional detection, measured against raw | this package | planned |
+| Regime-conditional detection, measured against raw | this package | **measured downstream** (TruckVitals, C-MAPSS) |
 | Conformal calibration of the alarm rate | Xu and Xie (2021), *ICML*, PMLR **139**:11559-11569; Gibbs and Candes (2021), *NeurIPS* **34**:1660-1672 | **implemented** (v0.09.000) |
 
 ## Currently implemented
@@ -61,11 +61,16 @@ baseline invalidates every comparison made on top of it.
 **Every rung on the ladder is now implemented**, from Shewhart to conformal calibration, each with its
 own tests and its own page here.
 
-**No controlled raw-against-residual comparison has been run.** The releases so far establish only that
-each method behaves the way its source says it behaves, and that the two comparison arms are constructed
-so that only one thing differs between them. The claim itself is measured by the consumer of this
-package, on the C-MAPSS contrast and on synthetic data with a known onset, and it may come back
-negative.
+**The controlled raw-against-residual comparison has been run, by the consumer of this package.** The
+releases here establish that each method behaves the way its source says it behaves, and that the two
+comparison arms are constructed so that only one thing differs between them. The claim itself is measured
+downstream. TruckVitals bakes the C-MAPSS contrast (CUSUM on both arms at a fixed budget of 1 false
+alarm per 1000 cycles; the raw arm detects 0.17 of faults on the six-condition FD002 fleet where the
+regime-conditioned arm detects 0.95, quoted at the WORSE of the two regime definitions, observed and
+clustered, so the number does not depend on choosing the flattering one) and a synthetic benchmark with
+a known onset (budget curves for twelve rungs, both arms, six budgets, every reachable point carrying a
+bootstrap interval over units). The design admitted a negative answer, and on this data it did not return
+one.
 
 ## The comparison design, stated once
 
