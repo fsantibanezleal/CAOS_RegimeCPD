@@ -43,8 +43,9 @@ that claim rather than an assertion of it.
 
 ## Status
 
-**v0.09.000. The method ladder is complete**, from Shewhart to conformal calibration. 290 tests, CI on
-Python 3.10 and 3.13.
+**v0.09.007, published on [PyPI](https://pypi.org/project/regimecpd/) as `regimecpd` 0.9.7.** The method
+ladder has been complete since 0.09.000, from Shewhart to conformal calibration; the seven releases since
+are the defect-fix and documentation record. 319 tests, CI on Python 3.10 and 3.13.
 
 | tier | methods |
 |---|---|
@@ -52,17 +53,24 @@ Python 3.10 and 3.13.
 | SOTA | BOCPD, PELT, mSTAMP, ADWIN, KSWIN, isolation forest, one-class SVM, autoencoder (CUDA) |
 | Beyond | regime-conditional detection, split and adaptive conformal calibration |
 
-**Not yet published to PyPI.** The Trusted Publishing pending publisher has to be registered by a human
-before the first upload can succeed; until then, install from a git tag.
+**Releases are uploaded by `.github/workflows/publish.yml`** on a published GitHub release, via PyPI
+Trusted Publishing with no stored token. The workflow smoke-installs the built wheel in a clean venv and
+scores a synthetic fleet before anything is uploaded. The downstream product, TruckVitals, pins
+`regimecpd==0.9.6`.
 
-**No controlled raw-against-residual comparison has been run yet.** What is established is that each
-method behaves the way its source says it behaves, and that the two comparison arms are constructed so
-only one thing differs between them. The claim itself is measured by a consumer of this package, and it
-may come back negative.
+**The controlled raw-against-residual comparison has been run, downstream.** What this package
+establishes is that each method behaves the way its source says it behaves, and that the two comparison
+arms are constructed so only one thing differs between them. The claim itself is measured by TruckVitals,
+the consumer of this package, on NASA C-MAPSS: with the same CUSUM at the same false-alarm budget of 1
+per 1000 cycles, the raw arm detects 0.93 of faults on the single-condition FD001 fleet and 0.17 on the
+six-condition FD002 fleet, while the WEAKER of the two regime-conditioned arms detects 0.95 on FD002. The
+FD003/FD004 pair repeats the pattern (0.24 raw against 0.90 conditioned). The design admitted a negative
+answer; on this data it did not return one.
 
 See the [CHANGELOG](CHANGELOG.md) for what landed when, and the [wiki](docs/README.md) for the theory.
-Nine defects found and fixed during the build are recorded there; most of them produced plausible numbers
-rather than errors.
+Nine defects found and fixed during the build are recorded there, and the review releases 0.09.001
+through 0.09.007 more than doubled the recorded total; most of them produced plausible numbers rather
+than errors.
 
 ## Quick look
 
