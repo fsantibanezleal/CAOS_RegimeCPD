@@ -65,7 +65,11 @@ the consumer of this package, on NASA C-MAPSS: with the same CUSUM at the same f
 per 1000 cycles, the raw arm detects 0.93 of faults on the single-condition FD001 fleet and 0.17 on the
 six-condition FD002 fleet, while the WEAKER of the two regime-conditioned arms detects 0.95 on FD002. The
 FD003/FD004 pair repeats the pattern (0.24 raw against 0.90 conditioned). The design admitted a negative
-answer; on this data it did not return one.
+answer; on this data it did not return one. The full measurement, including the onset-localisation NULL,
+the withdrawn false-alarm claim and the learned-tier counter-example, is published as a technical
+report: *Regime Conditioning Recovers Detection, Not Localisation*
+([doi:10.5281/zenodo.22002431](https://doi.org/10.5281/zenodo.22002431), CC-BY-4.0), whose figures
+regenerate from TruckVitals' committed artifacts.
 
 See the [CHANGELOG](CHANGELOG.md) for what landed when, and the [wiki](docs/README.md) for the theory.
 Nine defects found and fixed during the build are recorded there, and the review releases 0.09.001
