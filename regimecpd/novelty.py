@@ -156,7 +156,7 @@ class IsolationForestDetector(_Windowed):
         # NEGATED: sklearn's score_samples is higher for more normal. See the module docstring.
         scores = -self.model_.score_samples(features)
         return self._place(series, index, scores, "isolation-forest",
-                           {"n_estimators": self.n_estimators})
+                           {"shape": "boundary", "n_estimators": self.n_estimators})
 
 
 @dataclass
@@ -199,7 +199,8 @@ class OneClassSVMDetector(_Windowed):
         # NEGATED, same reason as the isolation forest.
         scores = -self.model_.decision_function(features)
         return self._place(series, index, scores, "one-class-svm",
-                           {"nu": self.nu, "n_train": getattr(self, "_n_train", None)})
+                           {"shape": "boundary", "nu": self.nu,
+                            "n_train": getattr(self, "_n_train", None)})
 
 
 @dataclass
@@ -294,4 +295,5 @@ class AutoencoderDetector(_Windowed):
         return self._place(series, index, error, "autoencoder", {
             "device": self.device_, "hidden": self.hidden,
             "final_train_loss": getattr(self, "_final_loss", None),
+            "shape": "reconstruction",
         })
