@@ -4,6 +4,52 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.10.000] - 2026-08-19
+
+### Added
+
+**A DEEP tier, and it is a matched PAIR rather than two more rungs.** `regimecpd.deep` adds
+`DeepSVDDDetector` (Ruff et al., ICML 2018) and `LSTMAutoencoderDetector` (EncDec-AD, Malhotra et
+al., ICML 2016 Anomaly Detection Workshop). Both train on healthy data only, both are behind the
+`[deep]` extra, and each declares its `shape` in the detection meta: Deep SVDD is BOUNDARY-shaped,
+the LSTM encoder-decoder is RECONSTRUCTION-shaped. A downstream study found regime conditioning
+hurting boundary-shaped novelty models and helping reconstruction-shaped ones; one deep detector of
+each shape is what turns that hypothesis into a test, so the opposition of their shapes is pinned by
+a test rather than left to a lookup table.
+
+Both were implemented from the primary sources, and the two details easiest to get wrong are the ones
+that are enforced:
+
+- **Deep SVDD's three collapse constraints, all from Section 3.3 propositions.** The centre is fixed
+  and never zero (a zero coordinate is trivially matched by zero weights); there are NO bias terms
+  anywhere, because with a bias the collapsed constant map is an OPTIMAL solution rather than a
+  training accident, and a construction-time assertion enforces it; the activation is unbounded.
+  Representation variance is computed at fit and reported, so a collapsed model is visible in the
+  artifact instead of being inferred from a suspiciously flat statistic. The reference implementation
+  leaves EXACTLY-zero centre coordinates at zero, which is a hole in it; this one closes it.
+- **EncDec-AD's reverse-order decoding.** The decoder reconstructs the window backwards, its first
+  emission comes off the copied encoder state with no input at all, training uses teacher forcing and
+  inference is free running. A forward-order build would pass every smoke check while being a
+  different method, so the asymmetry it implies (the LAST timestep reconstructs best) is asserted.
+  The error distribution is calibrated on FREE-RUNNING errors, because teacher forcing understates
+  what a scored window will produce.
+
+**A measured reason the published Mahalanobis score is not decoration.** On a fault that flips one
+channel's correlation with another while leaving every marginal untouched, the published score
+separates anomalous from healthy by 1.36 to 1.73 across three seeds; the plain MSE variant by 1.00 to
+1.13, which is to say not at all. Both ship, and the docstring carries the numbers, so nobody
+"simplifies" the score without knowing the cost.
+
+The covariance of the error vectors gets a RELATIVE ridge before inversion. An absolute floor would
+be a unit dependence, and a dead channel would still invert to something enormous: the same
+degenerate-scale defect this package has now fixed in four modules.
+
+### Notes
+
+The device each trained rung actually used is reported in `Detection.meta["device"]`. cuDNN's RNN
+kernels are documented as non-deterministic without `CUBLAS_WORKSPACE_CONFIG`, so exact cross-machine
+equality is not claimed for the LSTM and its tests assert behaviour rather than values.
+
 ## [0.09.007] - 2026-08-17
 
 ### Fixed
