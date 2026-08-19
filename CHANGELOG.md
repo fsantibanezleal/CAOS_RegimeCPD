@@ -4,6 +4,17 @@ All notable changes to this project are documented here, newest first, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions use the `X.XX.XXX` display form; the
 `pyproject.toml` manifest carries the same version in PEP 440 form with the padding dropped.
 
+## [0.10.001] - 2026-08-19
+
+### Fixed
+
+**All five learned rungs now declare their `shape`, not just the deep pair.** 0.10.000 added the
+field to Deep SVDD and the LSTM encoder-decoder, and left isolation forest, one-class SVM and the
+dense autoencoder silent. A downstream lane asserts its own shape table against what each detector
+declares, so the three silent rungs were exactly the ones whose table entries could drift unchecked:
+the guard existed and could not fire where it was most needed. Isolation forest and one-class SVM
+declare `boundary`; the dense autoencoder declares `reconstruction`.
+
 ## [0.10.000] - 2026-08-19
 
 ### Added
