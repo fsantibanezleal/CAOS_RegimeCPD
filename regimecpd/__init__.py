@@ -27,6 +27,7 @@ from .conformal import (
     calibration_report,
     conformalise,
 )
+from .deep import DeepSVDDDetector, LSTMAutoencoderDetector
 from .drift import ADWIN, KSWIN, ks_two_sample_pvalue
 from .metrics import (
     FleetScore,
@@ -49,7 +50,7 @@ from .scaling import degenerate_mask, robust_scale
 from .spc import PCAMonitor, chi2_quantile, normal_quantile
 from .types import Attribution, Detection, RegimeLabels, Residual, Series
 
-__version__ = "0.09.007"
+__version__ = "0.10.000"
 
 __all__ = [
     "__version__",
@@ -93,6 +94,8 @@ __all__ = [
     "IsolationForestDetector",
     "OneClassSVMDetector",
     "AutoencoderDetector",
+    "DeepSVDDDetector",
+    "LSTMAutoencoderDetector",
     # conformal calibration
     "SplitConformal",
     "AdaptiveConformal",
