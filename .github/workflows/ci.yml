@@ -3,12 +3,15 @@ name: CI
 on:
   push:
     branches: [main, develop]
-  pull_request:
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -33,6 +36,7 @@ jobs:
     # ever reaches for scikit-learn at module scope, this fails rather than shipping a core that
     # silently needs an ML stack to compute a CUSUM.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -67,6 +71,7 @@ jobs:
 
   guards:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Base-integrity guards
@@ -139,3 +144,5 @@ jobs:
           assert len(set(normed.values())) == 1, f"version drift: {seen}"
           print(f"OK: {version} (manifest {pyproj})")
           PY
+      - name: CI budget, trunk-only triggers, no training (ADR-0074)
+        run: python3 scripts/check_ci_budget.py
